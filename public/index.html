@@ -11,39 +11,89 @@
     <div id="login-container">
         <h1>Login</h1>
         <form id="login-form">
-            <input type="email" id="email" placeholder="Email" required>
-            <input type="password" id="password" placeholder="Password" required>
+            <input type="email" id="login-email" placeholder="Email" required>
+            <input type="password" id="login-password" placeholder="Password" required>
             <button type="submit">Login</button>
         </form>
         <p id="login-status"></p>
+        <p class="switch-form-text">
+            Don't have an account? <a href="#" id="show-register">Register</a>
+        </p>
+    </div>
+
+    <div id="register-container" class="hidden">
+        <h1>Register</h1>
+        <form id="register-form">
+            <input type="text" id="register-username" placeholder="Username" required>
+            <input type="text" id="register-displayname" placeholder="Display Name" required>
+            <input type="email" id="register-email" placeholder="Email" required>
+            <input type="password" id="register-password" placeholder="Password" required>
+            <button type="submit">Register</button>
+        </form>
+        <p id="register-status"></p>
+        <p class="switch-form-text">
+            Already have an account? <a href="#" id="show-login">Login</a>
+        </p>
     </div>
 
     <div id="chat-container" class="hidden">
         <div id="sidebar" class="hidden">
-            <div id="user-info">
-                <p>User: <strong id="current-username"></strong></p>
+            <div id="user-profile-section">
+                <div id="user-avatar" class="avatar">
+                </div>
+                <div id="user-details">
+                    <p>User: <strong id="current-username"></strong></p>
+                    <button id="change-avatar-btn">Change Avatar</button>
+                    <input type="file" id="avatar-upload-input" accept="image/*" style="display: none;">
+                    <p id="avatar-upload-status"></p>
+                </div>
             </div>
-            <h2>Chats</h2>
+            <div class="chat-header-actions">
+                <h2>Chats</h2>
+                <button id="start-chat-btn">Start Chat</button>
+            </div>
             <ul id="chat-list">
-                <!-- Chat list items will be added here -->
             </ul>
             <button id="disconnect-ws" class="hidden">Logout</button>
         </div>
         <div id="main-content">
             <div id="chat-header">
-                <h2>Select a Chat</h2>
             </div>
             <div id="messages">
                 <p>Please select a chat from the left.</p>
             </div>
             <form id="message-form" class="hidden">
-                <div class="emoji-container">
-                    <button type="button" id="emoji-button">😀</button>
-                    <div id="emoji-picker" class="hidden"></div>
+                <div id="image-preview-container" class="hidden">
+                    <img id="image-preview" src="" alt="Image preview">
+                    <button type="button" id="remove-image">✖</button>
                 </div>
-                <input type="text" id="message-input" placeholder="Enter message" required>
-                <button type="submit">Send</button>
+                <div class="message-input-container">
+                    <div class="emoji-container">
+                        <button type="button" id="emoji-button">😀</button>
+                        <div id="emoji-picker" class="hidden"></div>
+                    </div>
+                    <input type="text" id="message-input" placeholder="Enter message" required>
+                    <button type="button" id="attach-image">📎</button>
+                    <input type="file" id="image-upload" accept="image/*" style="display: none;">
+                    <button type="submit">Send</button>
+                </div>
             </form>
+        </div>
+    </div>
+
+    <div id="new-chat-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Start New Chat</h2>
+            <div class="input-group">
+                <input type="text" id="username-search" placeholder="Enter username to chat with">
+                <p id="search-status"></p>
+            </div>
+            <div id="search-results"></div>
+            <div class="modal-actions">
+                <button id="create-chat-btn" disabled>Start Chat</button>
+                <button id="cancel-chat-btn">Cancel</button>
+            </div>
         </div>
     </div>
 

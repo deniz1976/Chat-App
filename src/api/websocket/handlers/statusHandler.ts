@@ -7,7 +7,6 @@ const userRepository = new UserRepositoryImpl();
 
 export const handleUserStatus = async (userId: string, status: 'online' | 'offline' | 'away'): Promise<void> => {
   try {
-    // Update user status in database
     const user = await userRepository.updateStatus(userId, status);
     
     if (!user) {
@@ -15,12 +14,10 @@ export const handleUserStatus = async (userId: string, status: 'online' | 'offli
       return;
     }
 
-    // If user is going offline, update last seen time
     if (status === 'offline') {
       await userRepository.updateLastSeen(userId, new Date());
     }
 
-    // Broadcast status change to all users
     broadcastToAll({
       type: 'user_status_changed',
       payload: {

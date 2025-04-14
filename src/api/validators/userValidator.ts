@@ -1,7 +1,6 @@
 import joi from 'joi';
 import { Request, Response, NextFunction } from 'express';
 
-// Validation schemas
 const userUpdateSchema = joi.object({
   username: joi.string().alphanum().min(3).max(30).optional().messages({
     'string.alphanum': 'Username can only contain alphanumeric characters',
@@ -35,7 +34,6 @@ const userStatusSchema = joi.object({
   })
 });
 
-// Middleware functions
 export const validateUserUpdate = (req: Request, res: Response, next: NextFunction): void => {
   const { error } = userUpdateSchema.validate(req.body);
   if (error) {

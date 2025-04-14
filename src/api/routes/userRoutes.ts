@@ -6,21 +6,22 @@ import {
   deleteUser, 
   updateStatus,
   searchUsers,
-  getUserProfile
+  getUserProfile,
+  updateUserProfileAvatar
 } from '../controllers/userController';
 import { authenticate } from '../middlewares/auth';
 import { validateUserUpdate } from '../validators/userValidator';
 import { catchErrors } from '../middlewares/errorHandler';
+import uploadMiddleware from '../middlewares/upload';
 
 const router = express.Router();
 
-// All user routes require authentication
 router.use(authenticate);
 
-// User routes
 router.get('/', catchErrors(getUsers));
 router.get('/search', catchErrors(searchUsers));
 router.get('/profile', catchErrors(getUserProfile));
+router.put('/profile/avatar', uploadMiddleware, catchErrors(updateUserProfileAvatar));
 router.get('/:id', catchErrors(getUser));
 router.put('/:id', validateUserUpdate, catchErrors(updateUser));
 router.delete('/:id', catchErrors(deleteUser));

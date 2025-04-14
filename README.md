@@ -1,18 +1,18 @@
 # Real-time Chat Application
 
-An advanced real-time chat application built with Node.js, TypeScript, WebSockets, PostgreSQL, and integrated with Cloudflare services for media storage and delivery. This project emphasizes clean architecture and domain-driven design principles.
+An advanced real-time chat application built with Node.js, TypeScript, WebSockets, PostgreSQL, and integrated with Cloudflare R2 for media storage. This project emphasizes clean architecture and domain-driven design principles.
 
 ## Features
 
 *   **Real-time Messaging:** Utilizes WebSockets (`ws` library) for instant message delivery between connected clients.
 *   **User Authentication & Authorization:** Secure user login and session management using JSON Web Tokens (JWT). WebSocket connections are also authenticated via JWT.
+*   **User Avatars:** Allows users to upload and update their profile pictures, stored in Cloudflare R2.
 *   **Direct & Group Chats:** Supports both one-on-one conversations and multi-user group chats.
-*   **Media Sharing:** Allows users to share images and potentially other media types, leveraging Cloudflare R2 for storage. *(Note: Specific implementation details for Cloudflare Stream or Images might need further verification in the codebase)*.
-*   **File Sharing:** Functionality for sharing various file types.
+*   **Image Sharing:** Allows users to share images within chats, stored in Cloudflare R2.
 *   **Message Status:** Indicates whether messages are `sent`, `delivered`, or `read` (Real-time updates via WebSockets for read receipts).
 *   **Typing Indicators:** Shows when a user is actively typing in a chat session via WebSocket updates.
 *   **Online/Offline Status:** Tracks and broadcasts user presence status (online/offline) to relevant clients in real-time.
-*   **Media Storage:** Integrated with Cloudflare R2 for scalable and efficient object storage.
+*   **Media Storage:** Integrated with Cloudflare R2 for scalable and efficient object storage (avatars, chat images).
 *   **API Documentation:** Provides API documentation via Swagger UI.
 *   **Robust Error Handling:** Centralized error handling mechanism.
 *   **Structured Logging:** Comprehensive logging using Winston.
@@ -25,7 +25,8 @@ An advanced real-time chat application built with Node.js, TypeScript, WebSocket
 *   **ORM:** Sequelize (provides an abstraction layer for interacting with the PostgreSQL database).
 *   **Real-time Communication:** WebSockets (`ws` library for raw WebSocket implementation).
 *   **Authentication:** JSON Web Tokens (JWT) (`jsonwebtoken` library).
-*   **Media Storage:** Cloudflare R2 (Object storage service). *(Configuration includes R2 Bucket Name, Public Hostname, Access Key ID, Secret Access Key)*. Potentially Cloudflare Images/Stream based on specific implementation.
+*   **File Upload Handling:** Multer (`multer`, `multer-s3`) for processing multipart/form-data requests.
+*   **Media Storage & Delivery:** Cloudflare R2 (Object storage service) integrated via AWS SDK v3 (`@aws-sdk/client-s3`). Configuration includes R2 Bucket Name, Public Hostname, Access Key ID, Secret Access Key.
 *   **Validation:** Joi (for robust request data validation).
 *   **Logging:** Winston (a versatile logging library for Node.js, configured for console and file output).
 *   **Security:** Helmet (helps secure Express apps by setting various HTTP headers), CORS (enables Cross-Origin Resource Sharing), express-rate-limit (basic rate limiting to prevent abuse).
@@ -38,34 +39,39 @@ The project adheres to principles of Clean Architecture and Domain-Driven Design
 ```
 src/
 ├── api/                  # API Layer: Handles HTTP requests and WebSocket communication.
-│   ├── controllers/      # Request handlers processing input and interacting with core services.
-│   ├── middlewares/      # Express middlewares (authentication, error handling, validation).
-│   ├── routes/           # Defines API endpoints and links them to controllers.
+│   ├── controllers/      # Request handlers (e.g., userController, messageController).
+│   ├── middlewares/      # Express middlewares (auth, error handling, validation, file upload).
+│   ├── routes/           # Defines API endpoints (e.g., userRoutes includes avatar upload).
 │   ├── validators/       # Joi schemas for request data validation.
-│   └── websocket/        # WebSocket connection handling and message routing (though main logic is in `src/websocket.ts`).
+│   └── websocket/        # WebSocket connection handling and message routing (main logic in `src/websocket.ts`).
 ├── config/               # Application configuration, loaded from environment variables (`index.ts`).
-├── core/                 # Core business logic orchestration (Use Cases/Application Services - may require more detailed code review).
+├── core/                 # Core business logic orchestration (Use Cases/Application Services - potential area for expansion).
 ├── domain/               # Domain Layer: Represents the core business concepts.
-│   ├── entities/         # Business objects/entities (e.g., User, Message, Chat).
+│   ├── entities/         # Business objects/entities (User, Message, Chat).
 │   ├── repositories/     # Interfaces defining data access contracts.
 │   └── services/         # Domain-specific services containing business logic.
 ├── infrastructure/       # Infrastructure Layer: Implements external concerns.
-│   ├── database/         # Database setup (Sequelize), connection, and migrations management.
+│   ├── database/         # Database setup (Sequelize), connection, migrations.
 │   ├── repositories/     # Concrete implementations of repository interfaces using Sequelize.
-│   └── storage/          # Implementations for interacting with external storage (e.g., Cloudflare R2).
+│   └── storage/          # Could potentially house R2 interaction logic if abstracted further.
 ├── utils/                # Utility functions (e.g., logger, helper functions).
-├── server.ts             # Application entry point: Sets up Express, database, middlewares, WebSocket server, and starts the HTTP server.
-└── websocket.ts          # Core WebSocket server logic: Handles connections, authentication, message broadcasting, typing indicators, read receipts, and user status.
+├── server.ts             # Application entry point: Sets up Express, database, middlewares, WebSocket server, starts HTTP server.
+└── websocket.ts          # Core WebSocket server logic.
+public/                   # Static frontend files (HTML, CSS, JavaScript).
 ```
 
 ## Getting Started
 
 ### Prerequisites
 
-*   Node.js (v14 or higher recommended)
+*   Node.js (v16 or higher recommended)
 *   npm (usually comes with Node.js)
 *   PostgreSQL Server
-*   Cloudflare Account (for R2 object storage - requires Account ID, R2 Bucket details, and API credentials)
+*   Cloudflare Account (for R2 object storage)
+    *   Cloudflare Account ID
+    *   R2 Bucket created
+    *   R2 API Token with **Read & Write** permissions (generates Access Key ID and Secret Access Key)
+    *   (Optional but Recommended) Public Hostname configured for the R2 bucket for direct image access.
 *   Docker (Optional, for running in a container)
 
 ### Installation
@@ -76,13 +82,13 @@ src/
     cd Chat-App
     ```
 
-2.  **Install dependencies:**
+2.  **Install backend dependencies:**
     ```bash
     npm install
     ```
 
 3.  **Set up Environment Variables:**
-    Create a `.env` file in the root directory (`Chat-App/.env`) based on the `.env.example` (if provided) or the structure below. Fill in your specific configuration details.
+    Create a `.env` file in the root directory (`Chat-App/.env`). Use the following structure and fill in your details:
 
     ```dotenv
     # Server Configuration
@@ -99,70 +105,71 @@ src/
     DB_SSL=false # Set to true if using SSL connection
 
     # JWT Authentication
-    JWT_SECRET=your_strong_jwt_secret_key # Use a long, random, secure string
+    JWT_SECRET=generate_a_very_strong_random_secret_key # Use a long, random, secure string
     JWT_EXPIRES_IN=1d # e.g., 1d, 12h, 60m
 
-    # Cloudflare Configuration
+    # Cloudflare R2 Configuration
     CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id
-    CLOUDFLARE_API_TOKEN=your_cloudflare_api_token # General API Token (scope permissions appropriately)
-    # CLOUDFLARE_IMAGES_TOKEN=your_cloudflare_images_api_token # If using Cloudflare Images specifically
+    # CLOUDFLARE_API_TOKEN= # This general token might not be needed if using R2 specific keys
     CLOUDFLARE_R2_BUCKET_NAME=your_r2_bucket_name
-    CLOUDFLARE_R2_PUBLIC_HOSTNAME=your_r2_public_url # e.g., https://pub-yourhash.r2.dev
+    # Ensure this is the hostname for PUBLIC access (e.g., from Cloudflare R2 settings)
+    # Example: https://pub-yourhash.r2.dev OR your custom domain mapped to the bucket
+    CLOUDFLARE_R2_PUBLIC_HOSTNAME=your_r2_public_url_including_https
+    # Credentials from an R2 API Token with Read & Write permissions
     CLOUDFLARE_R2_ACCESS_KEY_ID=your_r2_access_key_id
     CLOUDFLARE_R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
     ```
-    *Ensure your Cloudflare API tokens and R2 credentials have the necessary permissions.*
+    *   **Important:** Ensure the R2 API Token used for the Access Key ID and Secret Access Key has **Read & Write** permissions for your bucket.*
+    *   **Important:** `CLOUDFLARE_R2_PUBLIC_HOSTNAME` should be the **full URL prefix** used to access your bucket publicly (including `https://`).*
+    *   **Never commit your `.env` file to Git.**
 
 4.  **Create the database:**
-    Ensure your PostgreSQL server is running. Connect using a tool like `psql` or a GUI client and run:
+    Ensure your PostgreSQL server is running. Connect and run:
     ```sql
     CREATE DATABASE chat_app;
     ```
-    *(Adjust the database name if you changed it in `.env`)*
 
 5.  **Run database migrations:**
-    This command sets up the necessary tables in your database based on the Sequelize migration files.
     ```bash
     npm run migration:run
     ```
 
 ### Running the Application
 
-*   **Development Mode:**
-    Uses `ts-node` and `nodemon` for automatic restarts on file changes.
+*   **Development Mode (with Backend Auto-Restart):**
     ```bash
     npm run dev
     ```
-    The server will typically start on `http://localhost:3000` (or the `PORT` specified in `.env`).
+    The backend server will start (typically on `http://localhost:3000`). The frontend is available by opening the `public/index.html` file in your browser (or serving it via a simple HTTP server).
 
 *   **Production Mode:**
-    First, build the TypeScript code into JavaScript:
+    Build the TypeScript code:
     ```bash
     npm run build
     ```
-    Then, start the application using Node:
+    Start the application:
     ```bash
     npm start
     ```
 
-### Other Useful Commands
+### Accessing the Frontend
 
-*   **Linting:** Check code for style and potential errors.
-    ```bash
-    npm run lint
-    ```
-*   **Formatting:** Automatically format code using Prettier.
-    ```bash
-    npm run format
-    ```
-*   **Testing:** Run automated tests (if tests are configured in `jest`).
-    ```bash
-    npm run test
-    ```
+Simply open the `public/index.html` file directly in your web browser. The JavaScript code will connect to the backend server running on `localhost:3000` (or the configured port).
+
+## Key Features Implementation
+
+*   **Avatar Upload:**
+    *   Frontend (`public/script.js`): Sends the image file via a PUT request to `/api/v1/users/profile/avatar`.
+    *   Backend (`src/api/routes/userRoutes.ts`): Defines the route, protected by `authenticate` middleware and uses `uploadMiddleware`.
+    *   Backend (`src/api/middlewares/upload.ts`): Uses `multer` and `multer-s3` with AWS SDK v3 to handle the file upload, validate type/size, and upload directly to the configured Cloudflare R2 bucket.
+    *   Backend (`src/api/controllers/userController.ts` -> `updateUserProfileAvatar`): Gets the uploaded file's key from `req.file`, constructs the public URL using `CLOUDFLARE_R2_PUBLIC_HOSTNAME` and the key, updates the user's `profileImage` field in the database, and returns the updated user data.
+*   **Avatar Display:**
+    *   Frontend (`public/script.js`): Uses the `profileImage` URL (fetched from the API) directly in `<img>` tag `src` attributes.
+    *   R2 Configuration: Requires the R2 bucket to allow public read access via the configured `CLOUDFLARE_R2_PUBLIC_HOSTNAME`.
 
 ## API Documentation
 
-API documentation is generated using Swagger UI and is available at the `/api-docs` endpoint when the server is running (e.g., `http://localhost:3000/api-docs`). Explore this endpoint to understand the available RESTful API routes, parameters, and responses.
+Available at `/api-docs` when the server is running (e.g., `http://localhost:3000/api-docs`).
 
 ## WebSocket Protocol
 

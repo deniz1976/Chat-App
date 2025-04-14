@@ -3,13 +3,11 @@ import { Chat } from '../../../domain/entities/Chat';
 import { User } from '../../../domain/entities/User';
 import { logger } from '../../../utils/logger';
 
-// Store typing status with expiration
 const typingUsers = new Map<string, NodeJS.Timeout>();
-const TYPING_TIMEOUT = 5000; // 5 seconds
+const TYPING_TIMEOUT = 5000;
 
 export const handleTypingStatus = async (userId: string, chatId: string, isTyping: boolean): Promise<void> => {
   try {
-    // Find the chat and check if user is a participant
     const chat = await Chat.findByPk(chatId);
     
     if (!chat) {
@@ -22,7 +20,6 @@ export const handleTypingStatus = async (userId: string, chatId: string, isTypin
       return;
     }
 
-    // Get user information
     const user = await User.findByPk(userId, {
       attributes: ['id', 'username', 'displayName'],
     });
@@ -32,22 +29,17 @@ export const handleTypingStatus = async (userId: string, chatId: string, isTypin
       return;
     }
 
-    // Generate a unique key for this user+chat
     const typingKey = `${userId}-${chatId}`;
 
-    // Clear existing timeout if any
     if (typingUsers.has(typingKey)) {
       clearTimeout(typingUsers.get(typingKey));
       typingUsers.delete(typingKey);
     }
 
-    // If user is typing, set timeout to automatically clear status
     if (isTyping) {
       const timeout = setTimeout(() => {
-        // Automatically set typing to false after timeout
         typingUsers.delete(typingKey);
         
-        // Broadcast typing stopped to all participants
         const recipients = chat.participants.filter(id => id !== userId);
         broadcastToUsers(recipients, {
           type: 'user_typing',
@@ -64,7 +56,6 @@ export const handleTypingStatus = async (userId: string, chatId: string, isTypin
       typingUsers.set(typingKey, timeout);
     }
 
-    // Broadcast to all participants except the sender
     const recipients = chat.participants.filter(id => id !== userId);
     
     broadcastToUsers(recipients, {

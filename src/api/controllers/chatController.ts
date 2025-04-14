@@ -76,7 +76,6 @@ export const getChats = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id;
     
-    // Find all chats where user is a participant
     const chats = await Chat.findAll({
       where: {
         participants: {
@@ -229,7 +228,6 @@ export const createChat = async (req: Request, res: Response): Promise<void> => 
     const { name, type, participants, avatar } = req.body;
     const userId = req.user!.id;
     
-    // Validate input
     if (type === ChatType.GROUP && !name) {
       res.status(400).json({ message: 'Group chats require a name' });
       return;

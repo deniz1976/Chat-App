@@ -107,4 +107,3 @@ export class Chat extends Model<ChatAttributes, ChatCreationAttributes> implemen
   }
 }
 
-// Removed Association Definitions 

@@ -14,13 +14,11 @@ interface MessagePayload {
 
 export const handleChatMessage = async (senderId: string, payload: MessagePayload): Promise<void> => {
   try {
-    // Validate payload
     if (!payload.chatId || !payload.content) {
       logger.warn('Invalid message payload', { senderId, payload });
       return;
     }
 
-    // Find the chat and check if user is a participant
     const chat = await Chat.findByPk(payload.chatId);
     
     if (!chat) {
@@ -33,7 +31,6 @@ export const handleChatMessage = async (senderId: string, payload: MessagePayloa
       return;
     }
 
-    // Create message in database
     const message = await Message.create({
       senderId,
       chatId: payload.chatId,
@@ -41,18 +38,15 @@ export const handleChatMessage = async (senderId: string, payload: MessagePayloa
       type: payload.type || MessageType.TEXT,
       mediaUrl: payload.mediaUrl,
       replyToId: payload.replyToId,
-      readBy: [senderId], // Mark as read by sender
+      readBy: [senderId], 
     });
 
-    // Update chat's last message
     await chat.update({ lastMessageId: message.id });
 
-    // Get sender information
     const sender = await User.findByPk(senderId, {
       attributes: ['id', 'username', 'displayName', 'profileImage'],
     });
 
-    // Get reply message if it exists
     let replyMessage = null;
     if (payload.replyToId) {
       replyMessage = await Message.findByPk(payload.replyToId, {
@@ -64,14 +58,12 @@ export const handleChatMessage = async (senderId: string, payload: MessagePayloa
       });
     }
 
-    // Create response object
     const messageResponse = {
       ...message.toJSON(),
       sender,
       replyTo: replyMessage,
     };
 
-    // Broadcast to all participants in the chat except sender
     const recipients = chat.participants.filter(id => id !== senderId);
     
     broadcastToUsers(recipients, {

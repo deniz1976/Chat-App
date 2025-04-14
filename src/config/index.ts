@@ -1,10 +1,8 @@
 import dotenv from 'dotenv';
 import { Sequelize, Dialect } from 'sequelize';
 
-// Load environment variables from .env file
 dotenv.config();
 
-// Export the interface
 export interface Config {
   port: number;
   nodeEnv: string;

@@ -16,10 +16,8 @@ import { catchErrors } from '../middlewares/errorHandler';
 
 const router = express.Router();
 
-// All message routes require authentication
 router.use(authenticate);
 
-// Message routes
 router.get('/chat/:chatId', catchErrors(getMessages));
 router.get('/chat/:chatId/unread', catchErrors(getUnreadCount));
 router.get('/chat/:chatId/media', catchErrors(getMediaMessages));

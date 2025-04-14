@@ -112,4 +112,3 @@ export class Message extends Model<MessageAttributes, MessageCreationAttributes>
   }
 }
 
-// Removed Association Definitions 

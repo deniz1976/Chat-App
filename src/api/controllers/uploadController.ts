@@ -97,11 +97,7 @@ const handleFileUpload = async (req: Request, res: Response, fileType: 'image' |
     logger.info(`Received ${fileType} upload request from user ${userId}`, { filename: file.originalname, size: file.size, mimetype: file.mimetype });
 
     try {
-        if (fileType === 'image') {
-            storageUrl = await uploadToCloudflareImages(file.buffer, file.originalname, file.mimetype);
-        } else {
-            storageUrl = await uploadToR2(file.buffer, file.mimetype, fileKey);
-        }
+        storageUrl = await uploadToR2(file.buffer, file.mimetype, fileKey);
 
         if (!storageUrl) {
             return res.status(500).json({ message: `Failed to upload ${fileType} to storage` });

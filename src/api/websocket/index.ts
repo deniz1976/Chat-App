@@ -15,7 +15,6 @@ interface WebSocketMessage {
   payload: any;
 }
 
-// Store active connections
 const clients = new Map<string, ExtendedWebSocket>();
 
 export const setupWebsocketHandlers = (wss: WebSocketServer): void => {
@@ -23,7 +22,6 @@ export const setupWebsocketHandlers = (wss: WebSocketServer): void => {
     const extWs = ws as ExtendedWebSocket;
     extWs.isAlive = true;
 
-    // Get token from query string
     const url = new URL(request.url || '', 'http://localhost');
     const token = url.searchParams.get('token');
 
@@ -33,29 +31,23 @@ export const setupWebsocketHandlers = (wss: WebSocketServer): void => {
     }
 
     try {
-      // Verify and decode JWT token
       const decoded = await verifyToken(token);
       extWs.userId = decoded.userId;
 
-      // Store the connection
       clients.set(decoded.userId, extWs);
       logger.info(`WebSocket client connected: ${decoded.userId}`);
 
-      // Send welcome message
       extWs.send(JSON.stringify({
         type: 'connection_established',
         payload: { userId: decoded.userId, message: 'Connected to chat server' },
       }));
 
-      // Update user status to online
       handleUserStatus(decoded.userId, 'online');
 
-      // Ping/Pong to keep connection alive
       extWs.on('pong', () => {
         extWs.isAlive = true;
       });
 
-      // Handle WebSocket messages
       extWs.on('message', async (data: string) => {
         try {
           const message: WebSocketMessage = JSON.parse(data);
@@ -82,12 +74,10 @@ export const setupWebsocketHandlers = (wss: WebSocketServer): void => {
         }
       });
 
-      // Handle disconnection
       extWs.on('close', async () => {
         clients.delete(extWs.userId);
         logger.info(`WebSocket client disconnected: ${extWs.userId}`);
         
-        // Update user status to offline
         await handleUserStatus(extWs.userId, 'offline');
       });
     } catch (error: any) {
@@ -96,7 +86,6 @@ export const setupWebsocketHandlers = (wss: WebSocketServer): void => {
     }
   });
 
-  // Set up interval to ping clients and clean up dead connections
   const interval = setInterval(() => {
     wss.clients.forEach((ws) => {
       const extWs = ws as ExtendedWebSocket;
@@ -116,7 +105,6 @@ export const setupWebsocketHandlers = (wss: WebSocketServer): void => {
   });
 };
 
-// Utility function to broadcast to specific users
 export const broadcastToUsers = (userIds: string[], message: any): void => {
   userIds.forEach(userId => {
     const client = clients.get(userId);
@@ -126,7 +114,6 @@ export const broadcastToUsers = (userIds: string[], message: any): void => {
   });
 };
 
-// Utility function to broadcast to all clients
 export const broadcastToAll = (message: any): void => {
   clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {

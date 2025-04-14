@@ -2,7 +2,6 @@ import joi from 'joi';
 import { Request, Response, NextFunction } from 'express';
 import { ChatType } from '../../domain/entities/Chat';
 
-// Validation schemas
 const chatCreationSchema = joi.object({
   name: joi.string().min(3).max(50).when('type', {
     is: ChatType.GROUP,
@@ -39,7 +38,6 @@ const participantSchema = joi.object({
   })
 });
 
-// Middleware functions
 export const validateChatCreation = (req: Request, res: Response, next: NextFunction): void => {
   const { error } = chatCreationSchema.validate(req.body);
   if (error) {
