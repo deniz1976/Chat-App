@@ -2,6 +2,8 @@
 
 An advanced real-time chat application built with Node.js, TypeScript, WebSockets, PostgreSQL, and integrated with Cloudflare R2 for media storage. This project emphasizes clean architecture and domain-driven design principles.
 
+![ChatApp](screenshots/ss.png)
+
 ## Features
 
 *   **Real-time Messaging:** Utilizes WebSockets (`ws` library) for instant message delivery between connected clients.
