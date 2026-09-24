@@ -1,5 +1,5 @@
 import joi from 'joi';
-import { Request, Response, NextFunction } from 'express';
+import { validateBody } from './validate';
 import { ChatType } from '../../domain/entities/Chat';
 
 const chatCreationSchema = joi.object({
@@ -13,7 +13,7 @@ const chatCreationSchema = joi.object({
     'any.required': 'Group chats require a name'
   }),
   type: joi.string().valid(...Object.values(ChatType)).required().messages({
-    'string.valid': 'Please enter a valid chat type',
+    'any.only': 'Please enter a valid chat type',
     'any.required': 'Chat type is required'
   }),
   participants: joi.array().items(joi.string().uuid()).min(1).required().messages({
@@ -38,29 +38,8 @@ const participantSchema = joi.object({
   })
 });
 
-export const validateChatCreation = (req: Request, res: Response, next: NextFunction): void => {
-  const { error } = chatCreationSchema.validate(req.body);
-  if (error) {
-    res.status(400).json({ message: error.details[0].message });
-    return;
-  }
-  next();
-};
+export const validateChatCreation = validateBody(chatCreationSchema);
 
-export const validateChatUpdate = (req: Request, res: Response, next: NextFunction): void => {
-  const { error } = chatUpdateSchema.validate(req.body);
-  if (error) {
-    res.status(400).json({ message: error.details[0].message });
-    return;
-  }
-  next();
-};
+export const validateChatUpdate = validateBody(chatUpdateSchema);
 
-export const validateParticipant = (req: Request, res: Response, next: NextFunction): void => {
-  const { error } = participantSchema.validate(req.body);
-  if (error) {
-    res.status(400).json({ message: error.details[0].message });
-    return;
-  }
-  next();
-}; 
+export const validateParticipant = validateBody(participantSchema); 

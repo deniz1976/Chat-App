@@ -1,44 +1,50 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../../utils/logger';
 import { config } from '../../config';
+import { AppError } from '../../core/errors';
 
-interface AppError extends Error {
+interface HttpError extends Error {
+  status?: number;
   statusCode?: number;
-  status?: string;
-  isOperational?: boolean;
+  expose?: boolean;
 }
 
-export const catchErrors = (fn: Function) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    fn(req, res, next).catch(next);
-  };
+const resolveClientError = (err: HttpError): { statusCode: number; message: string } | null => {
+  if (err instanceof AppError) {
+    return { statusCode: err.statusCode, message: err.message };
+  }
+  const statusCode = err.statusCode ?? err.status;
+  if (err.expose && statusCode && statusCode >= 400 && statusCode < 500) {
+    return { statusCode, message: err.message };
+  }
+  return null;
+};
+
+export const notFoundHandler = (req: Request, res: Response): void => {
+  res.status(404).json({ message: 'Not found' });
 };
 
 export const errorHandler = (
-  err: AppError,
+  err: HttpError,
   req: Request,
   res: Response,
   next: NextFunction
 ): void => {
-  err.statusCode = err.statusCode || 500;
-  err.status = err.status || 'error';
-
-  logger.error(`${err.statusCode} - ${err.message}`, {
-    url: req.originalUrl,
-    method: req.method,
-    stack: err.stack,
-  });
-
-  if (config.nodeEnv === 'development') {
-    res.status(err.statusCode).json({
-      status: err.status,
-      message: err.message,
-      stack: err.stack,
-    });
-  } else {
-    res.status(err.statusCode).json({
-      status: err.status,
-      message: err.isOperational ? err.message : 'Something went wrong.',
-    });
+  if (res.headersSent) {
+    next(err);
+    return;
   }
-}; 
+
+  const clientError = resolveClientError(err);
+  if (clientError) {
+    logger.warn(`${clientError.statusCode} - ${clientError.message}`, { url: req.originalUrl, method: req.method });
+    res.status(clientError.statusCode).json({ message: clientError.message });
+    return;
+  }
+
+  logger.error(`500 - ${err.message}`, { url: req.originalUrl, method: req.method, error: err });
+  res.status(500).json({
+    message: 'Something went wrong.',
+    ...(config.nodeEnv === 'development' && { detail: err.message, stack: err.stack }),
+  });
+};

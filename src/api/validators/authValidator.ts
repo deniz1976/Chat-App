@@ -1,5 +1,5 @@
 import joi from 'joi';
-import { Request, Response, NextFunction } from 'express';
+import { validateBody } from './validate';
 
 const loginSchema = joi.object({
   email: joi.string().email().required().messages({
@@ -35,20 +35,6 @@ const registrationSchema = joi.object({
   profileImage: joi.string().uri({ scheme: ['https'] }).optional(),
 });
 
-export const validateLogin = (req: Request, res: Response, next: NextFunction): void => {
-  const { error } = loginSchema.validate(req.body);
-  if (error) {
-    res.status(400).json({ message: error.details[0].message });
-    return;
-  }
-  next();
-};
+export const validateLogin = validateBody(loginSchema);
 
-export const validateRegistration = (req: Request, res: Response, next: NextFunction): void => {
-  const { error } = registrationSchema.validate(req.body);
-  if (error) {
-    res.status(400).json({ message: error.details[0].message });
-    return;
-  }
-  next();
-}; 
+export const validateRegistration = validateBody(registrationSchema); 

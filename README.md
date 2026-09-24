@@ -36,29 +36,32 @@ An advanced real-time chat application built with Node.js, TypeScript, WebSocket
 
 ## Project Structure
 
-The project adheres to principles of Clean Architecture and Domain-Driven Design (DDD) to promote separation of concerns, testability, and maintainability.
+The project follows a layered architecture: controllers and WebSocket handlers only translate transport concerns, services in `core` hold business rules and depend on repository interfaces from `domain`, and `infrastructure` provides the Sequelize and WebSocket implementations. Dependencies are wired in `src/container.ts`.
 
 ```
 src/
-├── api/                  # API Layer: Handles HTTP requests and WebSocket communication.
-│   ├── controllers/      # Request handlers (e.g., userController, messageController).
-│   ├── middlewares/      # Express middlewares (auth, error handling, validation, file upload).
-│   ├── routes/           # Defines API endpoints (e.g., userRoutes includes avatar upload).
-│   ├── validators/       # Joi schemas for request data validation.
-│   └── websocket/        # WebSocket connection handling and message routing (main logic in `src/websocket.ts`).
-├── config/               # Application configuration, loaded from environment variables (`index.ts`).
-├── core/                 # Core business logic orchestration (Use Cases/Application Services - potential area for expansion).
-├── domain/               # Domain Layer: Represents the core business concepts.
-│   ├── entities/         # Business objects/entities (User, Message, Chat).
-│   ├── repositories/     # Interfaces defining data access contracts.
-│   └── services/         # Domain-specific services containing business logic.
-├── infrastructure/       # Infrastructure Layer: Implements external concerns.
-│   ├── database/         # Database setup (Sequelize), connection, migrations.
-│   ├── repositories/     # Concrete implementations of repository interfaces using Sequelize.
-│   └── storage/          # Could potentially house R2 interaction logic if abstracted further.
-├── utils/                # Utility functions (e.g., logger, helper functions).
-├── server.ts             # Application entry point: Sets up Express, database, middlewares, WebSocket server, starts HTTP server.
-└── websocket.ts          # Core WebSocket server logic.
+├── api/                  # Transport layer: HTTP and WebSocket adapters.
+│   ├── controllers/      # Thin request handlers that delegate to services.
+│   ├── middlewares/      # Authentication, rate limiting, uploads and error handling.
+│   ├── presenters/       # Response shaping (e.g., public vs. private user fields).
+│   ├── routes/           # Endpoint definitions.
+│   ├── validators/       # Joi schemas for bodies, queries and route parameters.
+│   └── websocket/        # WebSocket server: handshake authentication and event dispatch.
+├── config/               # Configuration loaded from environment variables.
+├── core/                 # Application layer.
+│   ├── services/         # Business rules and authorization (auth, users, chats, messages, presence).
+│   ├── errors.ts         # Typed errors mapped to HTTP status codes.
+│   └── realtime.ts       # Realtime event types and the notifier port used by services.
+├── domain/               # Domain layer.
+│   ├── entities/         # User, Chat and Message models.
+│   └── repositories/     # Repository interfaces.
+├── infrastructure/       # Infrastructure layer.
+│   ├── database/         # Sequelize setup and associations.
+│   ├── realtime/         # WebSocket connection registry implementing the notifier port.
+│   └── repositories/     # Sequelize implementations of the repository interfaces.
+├── utils/                # Logger and helpers.
+├── container.ts          # Composition root wiring repositories, services and the notifier.
+└── server.ts             # Application entry point.
 public/                   # Static frontend files (HTML, CSS, JavaScript).
 ```
 
@@ -230,11 +233,10 @@ Application configuration is managed via environment variables, loaded using the
 
 ## Error Handling
 
-*   A global error handling middleware is defined in `src/api/middlewares/errorHandler.ts`.
-*   It catches errors passed via `next(err)` in Express routes.
-*   A `catchErrors` utility wraps asynchronous route handlers to ensure their promises' rejections are caught and passed to the global handler.
-*   In **development**, detailed error messages including stack traces are returned in the API response.
-*   In **production**, generic error messages are returned for non-operational errors to avoid leaking sensitive information, while operational errors (expected issues) might return more specific messages. All errors are logged regardless of the environment.
+*   Services throw typed errors from `src/core/errors.ts` (`BadRequestError`, `ForbiddenError`, `NotFoundError`, `ConflictError`, ...), which the global handler in `src/api/middlewares/errorHandler.ts` maps to the matching status code and message.
+*   Express 5 forwards rejected promises from async route handlers to the error handler, so controllers do not need their own try/catch blocks.
+*   Unexpected errors are logged with their stack trace and answered with a generic `500` response. In **development** the response also includes the error message and stack trace.
+*   Malformed JSON bodies and invalid route parameters are answered with `400`, and unknown routes with `404`.
 
 ## Security
 

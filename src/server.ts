@@ -5,10 +5,10 @@ import helmet from 'helmet';
 import path from 'path';
 import { config } from './config';
 import { setupDatabase } from './infrastructure/database';
-import { errorHandler } from './api/middlewares/errorHandler';
+import { errorHandler, notFoundHandler } from './api/middlewares/errorHandler';
 import { logger } from './utils/logger';
-import { initializeWebSocket } from './websocket';
-import { resetAllUserStatuses } from './infrastructure/realtime/presence';
+import { initializeWebSocket } from './api/websocket/server';
+import { presenceService } from './container';
 import { setupApiRoutes } from './api/routes';
 
 const app = express();
@@ -16,7 +16,7 @@ app.set('trust proxy', config.trustProxy);
 let server: http.Server;
 
 setupDatabase()
-  .then(resetAllUserStatuses)
+  .then(() => presenceService.resetAll())
   .then(() => {
     logger.info('Database setup complete.');
 
@@ -37,6 +37,7 @@ setupDatabase()
 
     setupApiRoutes(app);
 
+    app.use(notFoundHandler);
     app.use(errorHandler);
 
     server = http.createServer(app);

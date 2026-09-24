@@ -1,6 +1,7 @@
 import { WebSocket } from 'ws';
+import { RealtimeEvent, RealtimeNotifier } from '../../core/realtime';
 
-export class ConnectionRegistry {
+export class ConnectionRegistry implements RealtimeNotifier {
     private readonly connections = new Map<string, Set<WebSocket>>();
 
     add(userId: string, socket: WebSocket): boolean {
@@ -29,14 +30,17 @@ export class ConnectionRegistry {
         return this.connections.has(userId);
     }
 
-    sendToUser(userId: string, payload: string): number {
-        let sent = 0;
-        this.connections.get(userId)?.forEach(socket => {
-            if (socket.readyState === WebSocket.OPEN) {
-                socket.send(payload);
-                sent++;
+    sendToUsers(userIds: string[], event: RealtimeEvent, excludeUserId?: string): void {
+        const payload = JSON.stringify(event);
+        new Set(userIds).forEach(userId => {
+            if (userId === excludeUserId) {
+                return;
             }
+            this.connections.get(userId)?.forEach(socket => {
+                if (socket.readyState === WebSocket.OPEN) {
+                    socket.send(payload);
+                }
+            });
         });
-        return sent;
     }
 }

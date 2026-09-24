@@ -1,4 +1,5 @@
 import express from 'express';
+import { validateUuidParams } from '../validators/paramValidator';
 import { 
   getMessages,
   getMessage,
@@ -13,20 +14,21 @@ import {
 import { authenticate } from '../middlewares/auth';
 import { validateMessageCreation, validateMessageListQuery, validateMessageUpdate } from '../validators/messageValidator';
 import { validatePaginatedQuery } from '../validators/queryValidator';
-import { catchErrors } from '../middlewares/errorHandler';
 
 const router = express.Router();
 
+validateUuidParams(router, 'id', 'chatId');
+
 router.use(authenticate);
 
-router.get('/chat/:chatId', validateMessageListQuery, catchErrors(getMessages));
-router.get('/chat/:chatId/unread', catchErrors(getUnreadCount));
-router.get('/chat/:chatId/media', validatePaginatedQuery, catchErrors(getMediaMessages));
-router.get('/chat/:chatId/search', validatePaginatedQuery, catchErrors(searchMessages));
-router.get('/:id', catchErrors(getMessage));
-router.post('/', validateMessageCreation, catchErrors(createMessage));
-router.put('/:id', validateMessageUpdate, catchErrors(updateMessage));
-router.delete('/:id', catchErrors(deleteMessage));
-router.put('/:id/read', catchErrors(markAsRead));
+router.get('/chat/:chatId', validateMessageListQuery, getMessages);
+router.get('/chat/:chatId/unread', getUnreadCount);
+router.get('/chat/:chatId/media', validatePaginatedQuery, getMediaMessages);
+router.get('/chat/:chatId/search', validatePaginatedQuery, searchMessages);
+router.get('/:id', getMessage);
+router.post('/', validateMessageCreation, createMessage);
+router.put('/:id', validateMessageUpdate, updateMessage);
+router.delete('/:id', deleteMessage);
+router.put('/:id/read', markAsRead);
 
 export default router; 

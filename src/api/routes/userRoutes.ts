@@ -1,4 +1,5 @@
 import express from 'express';
+import { validateUuidParams } from '../validators/paramValidator';
 import { 
   getUsers, 
   getUser, 
@@ -12,23 +13,24 @@ import {
 } from '../controllers/userController';
 import { authenticate, requireRole, requireSelfOrAdmin } from '../middlewares/auth';
 import { validateUserRole, validateUserStatus, validateUserUpdate } from '../validators/userValidator';
-import { catchErrors } from '../middlewares/errorHandler';
 import { validatePaginatedQuery } from '../validators/queryValidator';
 import uploadMiddleware from '../middlewares/upload';
 import { UserRole } from '../../domain/entities/User';
 
 const router = express.Router();
 
+validateUuidParams(router, 'id');
+
 router.use(authenticate);
 
-router.get('/', validatePaginatedQuery, catchErrors(getUsers));
-router.get('/search', validatePaginatedQuery, catchErrors(searchUsers));
-router.get('/profile', catchErrors(getUserProfile));
-router.put('/profile/avatar', uploadMiddleware, catchErrors(updateUserProfileAvatar));
-router.get('/:id', catchErrors(getUser));
-router.put('/:id', requireSelfOrAdmin(), validateUserUpdate, catchErrors(updateUser));
-router.delete('/:id', requireSelfOrAdmin(), catchErrors(deleteUser));
-router.put('/:id/status', validateUserStatus, catchErrors(updateStatus));
-router.put('/:id/role', requireRole(UserRole.ADMIN), validateUserRole, catchErrors(updateRole));
+router.get('/', validatePaginatedQuery, getUsers);
+router.get('/search', validatePaginatedQuery, searchUsers);
+router.get('/profile', getUserProfile);
+router.put('/profile/avatar', uploadMiddleware, updateUserProfileAvatar);
+router.get('/:id', getUser);
+router.put('/:id', requireSelfOrAdmin(), validateUserUpdate, updateUser);
+router.delete('/:id', requireSelfOrAdmin(), deleteUser);
+router.put('/:id/status', validateUserStatus, updateStatus);
+router.put('/:id/role', requireRole(UserRole.ADMIN), validateUserRole, updateRole);
 
 export default router; 

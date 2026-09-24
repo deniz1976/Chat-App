@@ -1,15 +1,14 @@
-import { Message, MessageCreationAttributes, MessageType } from '../entities/Message';
+import { Message, MessageCreationAttributes } from '../entities/Message';
 
 export interface MessageRepository {
   findById(id: string): Promise<Message | null>;
-  findByChatId(chatId: string, limit?: number, offset?: number): Promise<Message[]>;
-  findByType(type: MessageType, limit?: number, offset?: number): Promise<Message[]>;
-  findBySenderId(senderId: string, limit?: number, offset?: number): Promise<Message[]>;
-  findByMediaType(chatId: string, type: MessageType, limit?: number, offset?: number): Promise<Message[]>;
-  create(messageData: MessageCreationAttributes): Promise<Message>;
-  update(id: string, messageData: Partial<MessageCreationAttributes>): Promise<Message | null>;
-  delete(id: string): Promise<boolean>;
-  markAsRead(messageId: string, userId: string): Promise<Message | null>;
-  getUnreadCount(chatId: string, userId: string): Promise<number>;
-  search(chatId: string, query: string, limit?: number, offset?: number): Promise<Message[]>;
-} 
+  existsInChat(id: string, chatId: string): Promise<boolean>;
+  findPage(chatId: string, limit: number, beforeId?: string): Promise<Message[] | null>;
+  findMedia(chatId: string, limit: number, offset: number): Promise<Message[]>;
+  search(chatId: string, query: string, limit: number, offset: number): Promise<Message[]>;
+  create(data: MessageCreationAttributes): Promise<Message>;
+  updateContent(id: string, senderId: string, content: string): Promise<Message | null>;
+  delete(id: string, senderId: string): Promise<boolean>;
+  markAsRead(id: string, userId: string): Promise<boolean>;
+  countUnread(chatId: string, userId: string): Promise<number>;
+}

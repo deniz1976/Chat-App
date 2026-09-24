@@ -1,130 +1,72 @@
-import { Op } from 'sequelize';
-import { User, UserCreationAttributes } from '../../domain/entities/User';
-import { UserRepository } from '../../domain/repositories/UserRepository';
-import { logger } from '../../utils/logger';
+import { Op, UniqueConstraintError } from 'sequelize';
+import { User, UserCreationAttributes, UserStatus } from '../../domain/entities/User';
+import { UserRepository, UserUpdate } from '../../domain/repositories/UserRepository';
 import { escapeLikePattern } from '../../utils/escapeLikePattern';
+import { DuplicateEntityError } from '../../domain/repositories/errors';
 
 export class UserRepositoryImpl implements UserRepository {
-  async findById(id: string): Promise<User | null> {
-    try {
-      return await User.findByPk(id);
-    } catch (error: any) {
-      logger.error('Error finding user by id', { error, id });
-      throw new Error(`Failed to find user by id: ${error.message}`);
-    }
+  findById(id: string): Promise<User | null> {
+    return User.findByPk(id);
   }
 
-  async findByEmail(email: string): Promise<User | null> {
-    try {
-      return await User.findOne({ where: { email } });
-    } catch (error: any) {
-      logger.error('Error finding user by email', { error, email });
-      throw new Error(`Failed to find user by email: ${error.message}`);
-    }
+  findByEmail(email: string): Promise<User | null> {
+    return User.findOne({ where: { email } });
   }
 
-  async findByUsername(username: string): Promise<User | null> {
-    try {
-      return await User.findOne({ where: { username } });
-    } catch (error: any) {
-      logger.error('Error finding user by username', { error, username });
-      throw new Error(`Failed to find user by username: ${error.message}`);
-    }
+  async existsByUsernameOrEmail(username: string, email: string): Promise<boolean> {
+    const count = await User.count({ where: { [Op.or]: [{ username }, { email }] } });
+    return count > 0;
   }
 
-  async create(userData: UserCreationAttributes): Promise<User> {
-    try {
-      return await User.create(userData);
-    } catch (error: any) {
-      logger.error('Error creating user', { error, username: userData.username });
-      throw new Error(`Failed to create user: ${error.message}`);
-    }
+  countExisting(ids: string[]): Promise<number> {
+    return User.count({ where: { id: ids } });
   }
 
-  async update(id: string, userData: Partial<UserCreationAttributes>): Promise<User | null> {
+  async create(data: UserCreationAttributes): Promise<User> {
     try {
-      const user = await User.findByPk(id);
-      
-      if (!user) {
-        return null;
+      return await User.create(data);
+    } catch (error) {
+      if (error instanceof UniqueConstraintError) {
+        throw new DuplicateEntityError('User');
       }
-
-      return await user.update(userData);
-    } catch (error: any) {
-      logger.error('Error updating user', { error, id, fields: Object.keys(userData) });
-      throw new Error(`Failed to update user: ${error.message}`);
+      throw error;
     }
+  }
+
+  async update(id: string, data: UserUpdate): Promise<User | null> {
+    const user = await User.findByPk(id);
+    return user ? user.update(data) : null;
   }
 
   async delete(id: string): Promise<boolean> {
-    try {
-      const rowsDeleted = await User.destroy({ where: { id } });
-      return rowsDeleted > 0;
-    } catch (error: any) {
-      logger.error('Error deleting user', { error, id });
-      throw new Error(`Failed to delete user: ${error.message}`);
-    }
+    const deleted = await User.destroy({ where: { id } });
+    return deleted > 0;
   }
 
-  async updateStatus(id: string, status: 'online' | 'offline' | 'away'): Promise<User | null> {
-    try {
-      const user = await User.findByPk(id);
-      
-      if (!user) {
-        return null;
-      }
-
-      return await user.update({ status });
-    } catch (error: any) {
-      logger.error('Error updating user status', { error, id, status });
-      throw new Error(`Failed to update user status: ${error.message}`);
-    }
+  list(limit: number, offset: number): Promise<User[]> {
+    return User.findAll({ limit, offset, order: [['username', 'ASC']] });
   }
 
-  async updateLastSeen(id: string, lastSeen: Date): Promise<User | null> {
-    try {
-      const user = await User.findByPk(id);
-      
-      if (!user) {
-        return null;
-      }
-
-      return await user.update({ lastSeen });
-    } catch (error: any) {
-      logger.error('Error updating user last seen', { error, id });
-      throw new Error(`Failed to update user last seen: ${error.message}`);
-    }
+  search(query: string, limit: number, offset: number): Promise<User[]> {
+    const pattern = `%${escapeLikePattern(query)}%`;
+    return User.findAll({
+      where: {
+        [Op.or]: [
+          { username: { [Op.iLike]: pattern } },
+          { displayName: { [Op.iLike]: pattern } },
+        ],
+      },
+      limit,
+      offset,
+      order: [['username', 'ASC']],
+    });
   }
 
-  async search(query: string, limit = 20, offset = 0): Promise<User[]> {
-    try {
-      const pattern = `%${escapeLikePattern(query)}%`;
-      return await User.findAll({
-        where: {
-          [Op.or]: [
-            { username: { [Op.iLike]: pattern } },
-            { displayName: { [Op.iLike]: pattern } },
-          ],
-        },
-        limit,
-        offset,
-      });
-    } catch (error: any) {
-      logger.error('Error searching users', { error, query });
-      throw new Error(`Failed to search users: ${error.message}`);
-    }
+  async updateStatus(id: string, status: UserStatus): Promise<void> {
+    await User.update({ status, lastSeen: new Date() }, { where: { id } });
   }
 
-  async getAll(limit = 100, offset = 0): Promise<User[]> {
-    try {
-      return await User.findAll({
-        limit,
-        offset,
-        order: [['username', 'ASC']],
-      });
-    } catch (error: any) {
-      logger.error('Error getting all users', { error, limit, offset });
-      throw new Error(`Failed to get all users: ${error.message}`);
-    }
+  async resetStatuses(): Promise<void> {
+    await User.update({ status: 'offline' }, { where: { status: { [Op.ne]: 'offline' } } });
   }
-} 
+}

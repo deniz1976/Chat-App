@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
-import { Op } from 'sequelize';
-import { User, UserCreationAttributes } from '../../domain/entities/User';
+import { authService } from '../../container';
 import { clearAuthCookie, issueAuthCookie } from '../middlewares/auth';
-import { logger } from '../../utils/logger';
+import { toPrivateUser } from '../presenters/userPresenter';
 
 /**
  * @swagger
@@ -67,49 +66,9 @@ import { logger } from '../../utils/logger';
  *         description: Server error
  */
 export const register = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { username, email, password, displayName, profileImage } = req.body;
-    
-    const existingUser = await User.findOne({
-      where: {
-        [Op.or]: [
-          { username },
-          { email }
-        ]
-      }
-    });
-
-    if (existingUser) {
-      res.status(409).json({ message: 'Username or email already exists' });
-      return;
-    }
-
-    const userData: UserCreationAttributes = {
-      username,
-      email,
-      password,
-      displayName,
-      profileImage,
-    };
-
-    const user = await User.create(userData);
-
-    issueAuthCookie(res, user);
-
-    const userResponse = {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      displayName: user.displayName,
-      profileImage: user.profileImage,
-      status: user.status,
-    };
-
-    res.status(201).json({ user: userResponse });
-  } catch (error: any) {
-    logger.error('Registration error', { error });
-    res.status(500).json({ message: 'Failed to register user' });
-  }
+  const user = await authService.register(req.body);
+  issueAuthCookie(res, user);
+  res.status(201).json({ user: toPrivateUser(user) });
 };
 
 /**
@@ -157,39 +116,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
  *         description: Server error
  */
 export const login = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { email, password } = req.body;
-    
-    const user = await User.findOne({ where: { email } });
-    
-    if (!user) {
-      res.status(401).json({ message: 'Invalid email or password' });
-      return;
-    }
-    
-    const isPasswordValid = await user.comparePassword(password);
-    
-    if (!isPasswordValid) {
-      res.status(401).json({ message: 'Invalid email or password' });
-      return;
-    }
-    
-    issueAuthCookie(res, user);
-
-    const userResponse = {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      displayName: user.displayName,
-      profileImage: user.profileImage,
-      status: user.status,
-    };
-    
-    res.status(200).json({ user: userResponse });
-  } catch (error: any) {
-    logger.error('Login error', { error });
-    res.status(500).json({ message: 'Failed to login' });
-  }
+  const user = await authService.login(req.body.email, req.body.password);
+  issueAuthCookie(res, user);
+  res.status(200).json({ user: toPrivateUser(user) });
 };
 
 /**
@@ -209,14 +138,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
  *         description: Server error
  */
 export const refreshToken = async (req: Request, res: Response): Promise<void> => {
-  try {
-    issueAuthCookie(res, req.user!);
-
-    res.status(200).json({ message: 'Session refreshed' });
-  } catch (error: any) {
-    logger.error('Token refresh error', { error });
-    res.status(500).json({ message: 'Failed to refresh token' });
-  }
+  issueAuthCookie(res, req.user!);
+  res.status(200).json({ message: 'Session refreshed' });
 };
 
 /**

@@ -2,7 +2,8 @@ import { Request, Response, NextFunction, CookieOptions } from 'express';
 import jwt from 'jsonwebtoken';
 import { parse as parseCookie } from 'cookie';
 import { config } from '../../config';
-import { User, UserRole } from '../../domain/entities/User';
+import { UserRole } from '../../domain/entities/User';
+import { authService } from '../../container';
 
 interface TokenPayload {
   userId: string;
@@ -84,9 +85,7 @@ export const resolveUserFromToken = async (token: string): Promise<Authenticated
     return null;
   }
 
-  const user = await User.findByPk(decoded.userId, {
-    attributes: ['id', 'username', 'email', 'role'],
-  });
+  const user = await authService.findUser(decoded.userId);
 
   if (!user) {
     return null;

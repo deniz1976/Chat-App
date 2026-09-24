@@ -1,5 +1,5 @@
 import joi from 'joi';
-import { Request, Response, NextFunction } from 'express';
+import { validateBody } from './validate';
 import { UserRole } from '../../domain/entities/User';
 
 const userUpdateSchema = joi.object({
@@ -26,18 +26,6 @@ const userRoleSchema = joi.object({
     'any.required': 'Role is required'
   })
 });
-
-const validateBody = (schema: joi.ObjectSchema) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const { error, value } = schema.validate(req.body);
-    if (error) {
-      res.status(400).json({ message: error.details[0].message });
-      return;
-    }
-    req.body = value;
-    next();
-  };
-};
 
 export const validateUserUpdate = validateBody(userUpdateSchema);
 export const validateUserStatus = validateBody(userStatusSchema);

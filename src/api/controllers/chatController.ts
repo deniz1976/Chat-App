@@ -1,9 +1,5 @@
 import { Request, Response } from 'express';
-import { Chat, ChatType, ChatCreationAttributes } from '../../domain/entities/Chat';
-import { User } from '../../domain/entities/User';
-import { Message } from '../../domain/entities/Message';
-import { logger } from '../../utils/logger';
-import { Op, UniqueConstraintError } from 'sequelize';
+import { chatService } from '../../container';
 
 /**
  * @swagger
@@ -73,35 +69,7 @@ import { Op, UniqueConstraintError } from 'sequelize';
  *         description: Server error
  */
 export const getChats = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const userId = req.user!.id;
-    
-    const chats = await Chat.findAll({
-      where: {
-        participants: {
-          [Op.contains]: [userId]
-        }
-      },
-      include: [
-        {
-          model: User,
-          as: 'creator',
-          attributes: ['id', 'username', 'displayName', 'profileImage']
-        },
-        {
-          model: Message,
-          as: 'lastMessage',
-          attributes: ['id', 'content', 'type', 'mediaUrl', 'createdAt']
-        }
-      ],
-      order: [['updatedAt', 'DESC']]
-    });
-    
-    res.status(200).json(chats);
-  } catch (error: any) {
-    logger.error('Error getting chats', { error, userId: req.user!.id });
-    res.status(500).json({ message: 'Failed to get chats' });
-  }
+  res.status(200).json(await chatService.listForUser(req.user!.id));
 };
 
 /**
@@ -137,42 +105,7 @@ export const getChats = async (req: Request, res: Response): Promise<void> => {
  *         description: Server error
  */
 export const getChat = async (req: Request, res: Response): Promise<void> => {
-  try {
-    
-    const { id } = req.params;
-    const userId = req.user!.id;
-    
-  
-    const chat = await Chat.findByPk(id, {
-      include: [
-        {
-          model: User,
-          as: 'creator',
-          attributes: ['id', 'username', 'displayName', 'profileImage']
-        },
-        {
-          model: Message,
-          as: 'lastMessage',
-          attributes: ['id', 'content', 'type', 'mediaUrl', 'createdAt']
-        }
-      ]
-    });
-    
-    if (!chat) {
-      res.status(404).json({ message: 'Chat not found' });
-      return;
-    }
-    
-    if (!chat.participants.includes(userId)) {
-      res.status(403).json({ message: 'You are not a participant in this chat' });
-      return;
-    }
-    
-    res.status(200).json(chat);
-  } catch (error: any) {
-    logger.error('Error getting chat', { error, chatId: req.params.id, userId: req.user!.id });
-    res.status(500).json({ message: 'Failed to get chat' });
-  }
+  res.status(200).json(await chatService.getForUser(req.params.id, req.user!.id));
 };
 
 /**
@@ -224,354 +157,41 @@ export const getChat = async (req: Request, res: Response): Promise<void> => {
  *         description: Server error
  */
 export const createChat = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { name, type, participants, avatar } = req.body;
-    const userId = req.user!.id;
-    
-    if (type === ChatType.GROUP && !name) {
-      res.status(400).json({ message: 'Group chats require a name' });
-      return;
-    }
-    
-    if (type === ChatType.DIRECT && participants.length !== 1) {
-      res.status(400).json({ message: 'Direct chats must have exactly one participant (other than yourself)' });
-      return;
-    }
-    
-    let directKey: string | null = null;
-
-    if (type === ChatType.DIRECT) {
-      const otherUserId = participants[0];
-
-      if (otherUserId === userId) {
-        res.status(400).json({ message: 'You cannot start a direct chat with yourself' });
-        return;
-      }
-
-      directKey = Chat.buildDirectKey(userId, otherUserId);
-      const existingChat = await Chat.findOne({ where: { directKey } });
-      if (existingChat) {
-        res.status(200).json(existingChat);
-        return;
-      }
-    }
-
-    const allParticipants: string[] = [...new Set<string>([userId, ...participants])];
-
-    const existingUserCount = await User.count({ where: { id: allParticipants } });
-    if (existingUserCount !== allParticipants.length) {
-      res.status(404).json({ message: 'One or more participants do not exist' });
-      return;
-    }
-    
-    const chatData: ChatCreationAttributes = {
-      name: type === ChatType.DIRECT ? null : name,
-      type,
-      avatar,
-      createdBy: userId,
-      participants: allParticipants,
-      admins: [userId],
-      directKey,
-    };
-
-    try {
-      const chat = await Chat.create(chatData);
-      res.status(201).json(chat);
-    } catch (error) {
-      if (directKey && error instanceof UniqueConstraintError) {
-        const existingChat = await Chat.findOne({ where: { directKey } });
-        if (existingChat) {
-          res.status(200).json(existingChat);
-          return;
-        }
-      }
-      throw error;
-    }
-  } catch (error: any) {
-    logger.error('Error creating chat', { error, userId: req.user!.id });
-    res.status(500).json({ message: 'Failed to create chat' });
-  }
+  const { chat, created } = await chatService.create(req.user!.id, req.body);
+  res.status(created ? 201 : 200).json(chat);
 };
 
 export const updateChat = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
   const { name, avatar } = req.body;
-  const userId = req.user!.id;
-
-  try {
-    const chat = await Chat.findByPk(id);
-
-    if (!chat) {
-      res.status(404).json({ message: 'Chat not found' });
-      return;
-    }
-
-    if (chat.type === ChatType.GROUP && !chat.admins.includes(userId) && chat.createdBy !== userId) {
-      res.status(403).json({ message: 'Only admins or the creator can update group chat details' });
-      return;
-    }
-    if (chat.type === ChatType.DIRECT) {
-       res.status(403).json({ message: 'Cannot update details of a direct chat' });
-       return;
-    }
-
-    const updateData: Partial<ChatCreationAttributes> = {};
-    if (name !== undefined) updateData.name = name;
-    if (avatar !== undefined) updateData.avatar = avatar;
-
-    if (Object.keys(updateData).length === 0) {
-      res.status(400).json({ message: 'No update data provided' });
-      return;
-    }
-
-    const updatedChat = await chat.update(updateData);
-
-    res.status(200).json(updatedChat);
-    logger.info(`Updated chat ${id} by user ${userId}`);
-  } catch (error: any) {
-    logger.error(`Error updating chat ${id}`, { error, userId });
-    res.status(500).json({ message: 'Failed to update chat' });
-  }
+  res.status(200).json(await chatService.update(req.params.id, req.user!.id, { name, avatar }));
 };
 
 export const deleteChat = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
-  const userId = req.user!.id;
-
-  try {
-    const chat = await Chat.findByPk(id);
-
-    if (!chat) {
-      res.status(404).json({ message: 'Chat not found' });
-      return;
-    }
-
-    if (chat.createdBy !== userId) {
-       res.status(403).json({ message: 'Only the creator can delete this chat' });
-       return;
-    }
-    await chat.destroy();
-
-    res.status(204).send(); 
-    logger.info(`Deleted chat ${id} by user ${userId}`);
-  } catch (error: any) {
-    logger.error(`Error deleting chat ${id}`, { error, userId });
-    res.status(500).json({ message: 'Failed to delete chat' });
-  }
+  await chatService.delete(req.params.id, req.user!.id);
+  res.status(204).send();
 };
 
 export const addParticipant = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params; 
-  const { userId: participantId } = req.body;
-  const requesterId = req.user!.id;
-
-  try {
-    const chat = await Chat.findByPk(id);
-
-    if (!chat) {
-      res.status(404).json({ message: 'Chat not found' });
-      return;
-    }
-
-    if (chat.type !== ChatType.GROUP) {
-      res.status(400).json({ message: 'Cannot add participants to a direct chat' });
-      return;
-    }
-
-    if (!chat.admins.includes(requesterId) && chat.createdBy !== requesterId) {
-      res.status(403).json({ message: 'Only admins or the creator can add participants' });
-      return;
-    }
-
-    if (chat.participants.includes(participantId)) {
-      res.status(409).json({ message: 'User is already a participant' });
-      return;
-    }
-
-    const participantExists = await User.count({ where: { id: participantId } });
-    if (!participantExists) {
-      res.status(404).json({ message: 'User not found' });
-      return;
-    }
-
-    const updatedParticipants = [...chat.participants, participantId];
-    await chat.update({ participants: updatedParticipants });
-
-    res.status(200).json({ participants: updatedParticipants });
-    logger.info(`Added participant ${participantId} to chat ${id} by user ${requesterId}`);
-  } catch (error: any) {
-    logger.error(`Error adding participant to chat ${id}`, { error, requesterId, participantId });
-    res.status(500).json({ message: 'Failed to add participant' });
-  }
+  const participants = await chatService.addParticipant(req.params.id, req.user!.id, req.body.userId);
+  res.status(200).json({ participants });
 };
 
 export const removeParticipant = async (req: Request, res: Response): Promise<void> => {
-  const { id, userId: participantId } = req.params;
-  const requesterId = req.user!.id;
-
-  if (participantId === requesterId) {
-      res.status(400).json({ message: 'You cannot remove yourself using this endpoint. Use POST /chats/:id/leave instead.' });
-      return;
-  }
-
-  try {
-    const chat = await Chat.findByPk(id);
-
-    if (!chat) {
-      res.status(404).json({ message: 'Chat not found' });
-      return;
-    }
-
-    if (chat.type !== ChatType.GROUP) {
-      res.status(400).json({ message: 'Cannot remove participants from a direct chat' });
-      return;
-    }
-
-    if (!chat.admins.includes(requesterId) && chat.createdBy !== requesterId) {
-      res.status(403).json({ message: 'Only admins or the creator can remove participants' });
-      return;
-    }
-
-    if (participantId === chat.createdBy) {
-      res.status(400).json({ message: 'Cannot remove the chat creator' });
-      return;
-    }
-
-    if (!chat.participants.includes(participantId)) {
-      res.status(404).json({ message: 'User is not a participant in this chat' });
-      return;
-    }
-
-    const updatedParticipants = chat.participants.filter(p => p !== participantId);
-    const updatedAdmins = chat.admins.filter(a => a !== participantId);
-    await chat.update({ participants: updatedParticipants, admins: updatedAdmins });
-
-    res.status(200).json({ participants: updatedParticipants });
-    logger.info(`Removed participant ${participantId} from chat ${id} by user ${requesterId}`);
-  } catch (error: any) {
-    logger.error(`Error removing participant ${participantId} from chat ${id}`, { error, requesterId });
-    res.status(500).json({ message: 'Failed to remove participant' });
-  }
-};
-
-export const addAdmin = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params; 
-  const { userId: adminId } = req.body;
-  const requesterId = req.user!.id;
-
-  try {
-    const chat = await Chat.findByPk(id);
-
-    if (!chat) {
-      res.status(404).json({ message: 'Chat not found' });
-      return;
-    }
-
-    if (chat.type !== ChatType.GROUP) {
-      res.status(400).json({ message: 'Cannot manage admins in a direct chat' });
-      return;
-    }
-
-    if (!chat.admins.includes(requesterId) && chat.createdBy !== requesterId) {
-      res.status(403).json({ message: 'Only admins or the creator can add new admins' });
-      return;
-    }
-
-    if (!chat.participants.includes(adminId)) {
-      res.status(400).json({ message: 'Cannot make a non-participant an admin' });
-      return;
-    }
-
-    if (chat.admins.includes(adminId)) {
-      res.status(409).json({ message: 'User is already an admin' });
-      return;
-    }
-
-    const updatedAdmins = [...chat.admins, adminId];
-    await chat.update({ admins: updatedAdmins });
-
-    res.status(200).json({ admins: updatedAdmins });
-    logger.info(`Added admin ${adminId} to chat ${id} by user ${requesterId}`);
-  } catch (error: any) {
-    logger.error(`Error adding admin ${adminId} to chat ${id}`, { error, requesterId });
-    res.status(500).json({ message: 'Failed to add admin' });
-  }
-};
-
-export const removeAdmin = async (req: Request, res: Response): Promise<void> => {
-  const { id, userId: adminId } = req.params;
-  const requesterId = req.user!.id;
-
-  try {
-    const chat = await Chat.findByPk(id);
-
-    if (!chat) {
-      res.status(404).json({ message: 'Chat not found' });
-      return;
-    }
-
-    if (adminId === chat.createdBy) {
-        res.status(400).json({ message: 'Cannot remove the chat creator from admins' });
-        return;
-    }
-
-    if (chat.type !== ChatType.GROUP) {
-      res.status(400).json({ message: 'Cannot manage admins in a direct chat' });
-      return;
-    }
-
-    if (!chat.admins.includes(requesterId) && chat.createdBy !== requesterId) {
-      res.status(403).json({ message: 'Only admins or the creator can remove admins' });
-      return;
-    }
-
-    if (!chat.admins.includes(adminId)) {
-      res.status(404).json({ message: 'User is not an admin in this chat' });
-      return;
-    }
-
-    const updatedAdmins = chat.admins.filter(a => a !== adminId);
-    await chat.update({ admins: updatedAdmins });
-
-    res.status(200).json({ admins: updatedAdmins });
-    logger.info(`Removed admin ${adminId} from chat ${id} by user ${requesterId}`);
-  } catch (error: any) {
-    logger.error(`Error removing admin ${adminId} from chat ${id}`, { error, requesterId });
-    res.status(500).json({ message: 'Failed to remove admin' });
-  }
+  const participants = await chatService.removeParticipant(req.params.id, req.user!.id, req.params.userId);
+  res.status(200).json({ participants });
 };
 
 export const leaveChat = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
-  const userId = req.user!.id;
+  await chatService.leave(req.params.id, req.user!.id);
+  res.status(204).send();
+};
 
-  try {
-    const chat = await Chat.findByPk(id);
+export const addAdmin = async (req: Request, res: Response): Promise<void> => {
+  const admins = await chatService.addAdmin(req.params.id, req.user!.id, req.body.userId);
+  res.status(200).json({ admins });
+};
 
-    if (!chat || !chat.participants.includes(userId)) {
-      res.status(404).json({ message: 'Chat not found' });
-      return;
-    }
-
-    if (chat.type !== ChatType.GROUP) {
-      res.status(400).json({ message: 'Cannot leave a direct chat' });
-      return;
-    }
-
-    if (chat.createdBy === userId) {
-      res.status(400).json({ message: 'The chat creator cannot leave the chat. Delete the chat instead.' });
-      return;
-    }
-
-    await chat.update({
-      participants: chat.participants.filter(p => p !== userId),
-      admins: chat.admins.filter(a => a !== userId),
-    });
-
-    res.status(204).send();
-    logger.info(`User ${userId} left chat ${id}`);
-  } catch (error: any) {
-    logger.error(`Error leaving chat ${id}`, { error, userId });
-    res.status(500).json({ message: 'Failed to leave chat' });
-  }
+export const removeAdmin = async (req: Request, res: Response): Promise<void> => {
+  const admins = await chatService.removeAdmin(req.params.id, req.user!.id, req.params.userId);
+  res.status(200).json({ admins });
 };

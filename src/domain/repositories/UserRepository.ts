@@ -1,14 +1,21 @@
-import { User, UserCreationAttributes } from '../entities/User';
+import { User, UserCreationAttributes, UserRole, UserStatus } from '../entities/User';
+
+export interface UserUpdate {
+  displayName?: string;
+  profileImage?: string | null;
+  role?: UserRole;
+}
 
 export interface UserRepository {
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
-  findByUsername(username: string): Promise<User | null>;
-  create(userData: UserCreationAttributes): Promise<User>;
-  update(id: string, userData: Partial<UserCreationAttributes>): Promise<User | null>;
+  existsByUsernameOrEmail(username: string, email: string): Promise<boolean>;
+  countExisting(ids: string[]): Promise<number>;
+  create(data: UserCreationAttributes): Promise<User>;
+  update(id: string, data: UserUpdate): Promise<User | null>;
   delete(id: string): Promise<boolean>;
-  updateStatus(id: string, status: 'online' | 'offline' | 'away'): Promise<User | null>;
-  updateLastSeen(id: string, lastSeen: Date): Promise<User | null>;
-  search(query: string, limit?: number, offset?: number): Promise<User[]>;
-  getAll(limit?: number, offset?: number): Promise<User[]>;
-} 
+  list(limit: number, offset: number): Promise<User[]>;
+  search(query: string, limit: number, offset: number): Promise<User[]>;
+  updateStatus(id: string, status: UserStatus): Promise<void>;
+  resetStatuses(): Promise<void>;
+}

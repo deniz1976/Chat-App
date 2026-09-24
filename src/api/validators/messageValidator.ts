@@ -1,7 +1,7 @@
 import joi from 'joi';
-import { Request, Response, NextFunction } from 'express';
 import { MessageType } from '../../domain/entities/Message';
-import { MAX_PAGE_SIZE, validateQuery } from './queryValidator';
+import { MAX_PAGE_SIZE } from './queryValidator';
+import { validateBody, validateQuery } from './validate';
 
 const messageCreationSchema = joi.object({
   chatId: joi.string().uuid().required().messages({
@@ -12,34 +12,21 @@ const messageCreationSchema = joi.object({
     'any.required': 'Message content is required',
   }),
   type: joi.string().valid(...Object.values(MessageType)).default(MessageType.TEXT).messages({
-    'string.valid': 'Please enter a valid message type',
+    'any.only': 'Please enter a valid message type',
   }),
   mediaUrl: joi.string().uri({ scheme: ['https'] }).allow(null, '').optional(),
   replyToId: joi.string().uuid().allow(null, '').optional(),
 });
 
 const messageUpdateSchema = joi.object({
-  content: joi.string().optional(),
-  mediaUrl: joi.string().uri({ scheme: ['https'] }).allow(null, '').optional(),
+  content: joi.string().required().messages({
+    'any.required': 'Message content is required for update',
+  }),
 });
 
-export const validateMessageCreation = (req: Request, res: Response, next: NextFunction): void => {
-  const { error } = messageCreationSchema.validate(req.body);
-  if (error) {
-    res.status(400).json({ message: error.details[0].message });
-    return;
-  }
-  next();
-};
+export const validateMessageCreation = validateBody(messageCreationSchema);
 
-export const validateMessageUpdate = (req: Request, res: Response, next: NextFunction): void => {
-  const { error } = messageUpdateSchema.validate(req.body);
-  if (error) {
-    res.status(400).json({ message: error.details[0].message });
-    return;
-  }
-  next();
-}; 
+export const validateMessageUpdate = validateBody(messageUpdateSchema);
 
 const messageListQuerySchema = joi.object({
   limit: joi.number().integer().min(1).max(MAX_PAGE_SIZE).default(50),
