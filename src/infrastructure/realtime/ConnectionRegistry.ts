@@ -25,10 +25,6 @@ export class ConnectionRegistry {
         return false;
     }
 
-    connectedUserIds(): string[] {
-        return Array.from(this.connections.keys());
-    }
-
     isConnected(userId: string): boolean {
         return this.connections.has(userId);
     }

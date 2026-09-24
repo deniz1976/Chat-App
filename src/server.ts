@@ -8,6 +8,7 @@ import { setupDatabase } from './infrastructure/database';
 import { errorHandler } from './api/middlewares/errorHandler';
 import { logger } from './utils/logger';
 import { initializeWebSocket } from './websocket';
+import { resetAllUserStatuses } from './infrastructure/realtime/presence';
 import { setupApiRoutes } from './api/routes';
 import rateLimit from 'express-rate-limit';
 
@@ -15,6 +16,7 @@ const app = express();
 let server: http.Server;
 
 setupDatabase()
+  .then(resetAllUserStatuses)
   .then(() => {
     logger.info('Database setup complete.');
 

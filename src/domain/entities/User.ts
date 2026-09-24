@@ -3,6 +3,8 @@ import bcrypt from 'bcrypt';
 import { Chat } from './Chat';
 import { Message } from './Message';
 
+export type UserStatus = 'online' | 'offline' | 'away';
+
 export enum UserRole {
   USER = 'user',
   ADMIN = 'admin',
@@ -15,7 +17,7 @@ export interface UserAttributes {
   password: string;
   displayName: string;
   profileImage: string | null;
-  status: 'online' | 'offline' | 'away';
+  status: UserStatus;
   role: UserRole;
   lastSeen: Date;
   createdAt: Date;
@@ -32,7 +34,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public password!: string;
   public displayName!: string;
   public profileImage!: string | null;
-  public status!: 'online' | 'offline' | 'away';
+  public status!: UserStatus;
   public role!: UserRole;
   public lastSeen!: Date;
   public createdAt!: Date;

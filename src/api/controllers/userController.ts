@@ -5,6 +5,7 @@ import { UserRepositoryImpl } from '../../infrastructure/repositories/UserReposi
 import { UserCreationAttributes, UserRole } from '../../domain/entities/User';
 import { config } from '../../config';
 import { isAdmin } from '../middlewares/auth';
+import { publishUserStatus } from '../../websocket';
 
 const userRepository: UserRepository = new UserRepositoryImpl();
 
@@ -103,12 +104,8 @@ export const updateStatus = async (req: Request, res: Response): Promise<void> =
     }
 
     try {
-        const updatedUser = await userRepository.updateStatus(id, status);
-        if (!updatedUser) {
-            res.status(404).json({ message: 'User not found' });
-            return;
-        }
-        res.status(200).json({ status: updatedUser.status });
+        await publishUserStatus(id, status);
+        res.status(200).json({ status });
         logger.info(`Updated status for user with id: ${id} to ${status}`);
     } catch (error: any) {
         logger.error(`Error updating status for user with id: ${id}`, { error });

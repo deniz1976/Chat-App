@@ -6,6 +6,8 @@ import { logger } from './utils/logger';
 import { Chat } from './domain/entities/Chat';
 import { Message } from './domain/entities/Message';
 import { ConnectionRegistry } from './infrastructure/realtime/ConnectionRegistry';
+import { getContactIds, setUserStatus } from './infrastructure/realtime/presence';
+import { UserStatus } from './domain/entities/User';
 import { AuthenticatedUser, getTokenFromCookieHeader, resolveUserFromToken } from './api/middlewares/auth';
 
 export enum WebSocketMessageType {
@@ -144,7 +146,9 @@ export const initializeWebSocket = (server: http.Server) => {
 
         ws.userId = userData.id;
         ws.username = userData.username;
-        connections.add(userData.id, ws);
+        if (connections.add(userData.id, ws)) {
+            syncPresence(userData.id);
+        }
         logger.info(`WebSocket client connected: ${userData.username} (ID: ${userData.id})`);
 
         ws.on('message', async (message: Buffer) => {
@@ -183,7 +187,7 @@ export const initializeWebSocket = (server: http.Server) => {
             logger.info(`WebSocket client disconnected: ${userData.username} (ID: ${userData.id}), Code: ${code}, Reason: ${reason.toString()}`);
 
             if (wasLastConnection) {
-                broadcastUserStatus(userData.id, 'offline');
+                syncPresence(userData.id);
             }
         });
 
@@ -237,19 +241,25 @@ async function handleReadReceipt(payload: unknown, readerId: string) {
     });
 }
 
-function broadcastUserStatus(userId: string, status: 'online' | 'away' | 'offline') {
+const syncPresence = (userId: string): void => {
+    const status: UserStatus = connections.isConnected(userId) ? 'online' : 'offline';
+    publishUserStatus(userId, status).catch(error => {
+        logger.error(`Failed to publish ${status} status for ${userId}`, { error });
+    });
+};
 
-    const message = {
+export const publishUserStatus = async (userId: string, status: UserStatus): Promise<void> => {
+    await setUserStatus(userId, status);
+    const contactIds = await getContactIds(userId);
+    broadcastMessageToUsers(contactIds, {
         type: WebSocketMessageType.USER_STATUS,
         payload: {
             userId,
             status,
             timestamp: new Date().toISOString()
         }
-    };
-    
-    broadcastMessageToUsers(connections.connectedUserIds(), message, userId);
-}
+    });
+};
 
 export const broadcastMessageToUsers = (userIds: string[], message: object, excludeUserId?: string) => {
     const payload = JSON.stringify(message);

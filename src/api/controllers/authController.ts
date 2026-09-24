@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import { User, UserCreationAttributes } from '../../domain/entities/User';
-import { clearAuthCookie, getTokenFromCookieHeader, issueAuthCookie, verifyToken } from '../middlewares/auth';
+import { clearAuthCookie, issueAuthCookie } from '../middlewares/auth';
 import { logger } from '../../utils/logger';
 
 /**
@@ -174,10 +174,6 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
     
-    user.status = 'online';
-    user.lastSeen = new Date();
-    await user.save();
-    
     issueAuthCookie(res, user);
 
     const userResponse = {
@@ -237,23 +233,6 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
  *         description: Server error
  */
 export const logout = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const token = getTokenFromCookieHeader(req.headers.cookie);
-    clearAuthCookie(res);
-
-    if (token) {
-      const decoded = await verifyToken(token).catch(() => null);
-      if (decoded) {
-        await User.update(
-          { status: 'offline', lastSeen: new Date() },
-          { where: { id: decoded.userId } }
-        );
-      }
-    }
-
-    res.status(200).json({ message: 'Logged out successfully' });
-  } catch (error: any) {
-    logger.error('Logout error', { error });
-    res.status(500).json({ message: 'Failed to logout' });
-  }
-}; 
+  clearAuthCookie(res);
+  res.status(200).json({ message: 'Logged out successfully' });
+};
