@@ -9,6 +9,10 @@ export class UserRepositoryImpl implements UserRepository {
     return User.findByPk(id);
   }
 
+  findByIds(ids: string[]): Promise<User[]> {
+    return ids.length > 0 ? User.findAll({ where: { id: ids } }) : Promise.resolve([]);
+  }
+
   findByEmail(email: string): Promise<User | null> {
     return User.findOne({ where: { email } });
   }

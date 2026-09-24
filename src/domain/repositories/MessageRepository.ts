@@ -12,4 +12,5 @@ export interface MessageRepository {
   delete(id: string, senderId: string): Promise<boolean>;
   markAsRead(id: string, userId: string): Promise<boolean>;
   countUnread(chatId: string, userId: string): Promise<number>;
+  countUnreadByChat(chatIds: string[], userId: string): Promise<Map<string, number>>;
 }

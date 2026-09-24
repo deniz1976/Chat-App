@@ -41,6 +41,21 @@ describe('direct chats', () => {
     await bob.post('/chats', { type: 'direct', participants: [alice.id] }).expect(201);
   });
 
+  it('lists chats with member profiles and per-user unread counts', async () => {
+    const chatId = await createDirectChat(alice, bob);
+    await alice.post('/messages', { chatId, content: 'one' }).expect(201);
+    await alice.post('/messages', { chatId, content: 'two' }).expect(201);
+
+    const [chat] = (await bob.get('/chats').expect(200)).body;
+    expect(chat.unreadCount).toBe(2);
+    expect(chat.lastMessage).toMatchObject({ content: 'two', senderId: alice.id });
+    expect(chat.members.map((m: { username: string }) => m.username).sort()).toEqual(['alice', 'bob']);
+    expect(chat.members[0]).not.toHaveProperty('email');
+    expect(chat).not.toHaveProperty('directKey');
+
+    expect((await alice.get('/chats').expect(200)).body[0].unreadCount).toBe(0);
+  });
+
   it('rejects chats with yourself and with unknown users', async () => {
     await alice.post('/chats', { type: 'direct', participants: [alice.id] }).expect(400);
     await alice.post('/chats', { type: 'direct', participants: ['11111111-1111-4111-8111-111111111111'] }).expect(404);

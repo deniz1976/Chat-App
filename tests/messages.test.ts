@@ -37,7 +37,8 @@ describe('messages', () => {
   it('updates the chat last message', async () => {
     const message = await send(bob, 'latest');
     const chat = await alice.get(`/chats/${chatId}`).expect(200);
-    expect(chat.body.lastMessageId).toBe(message.id);
+    expect(chat.body.lastMessage.id).toBe(message.id);
+    expect(chat.body.lastMessage.senderId).toBe(bob.id);
     expect(chat.body.lastMessage.content).toBe('latest');
   });
 
@@ -85,11 +86,10 @@ describe('messages', () => {
     const second = await send(bob, 'second');
 
     await alice.delete(`/messages/${first.id}`).expect(204);
-    expect((await alice.get(`/chats/${chatId}`)).body.lastMessageId).toBe(second.id);
+    expect((await alice.get(`/chats/${chatId}`)).body.lastMessage.id).toBe(second.id);
 
     await bob.delete(`/messages/${second.id}`).expect(204);
     const chat = await alice.get(`/chats/${chatId}`).expect(200);
-    expect(chat.body.lastMessageId).toBeNull();
     expect(chat.body.lastMessage).toBeNull();
   });
 

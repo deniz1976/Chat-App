@@ -1,20 +1,14 @@
 import { Op, Sequelize, UniqueConstraintError, WhereOptions } from 'sequelize';
 import { Chat, ChatAttributes, ChatCreationAttributes } from '../../domain/entities/Chat';
-import { User } from '../../domain/entities/User';
 import { Message } from '../../domain/entities/Message';
 import { ChatRepository, ChatUpdate } from '../../domain/repositories/ChatRepository';
 import { DuplicateEntityError } from '../../domain/repositories/errors';
 
 const detailIncludes = [
   {
-    model: User,
-    as: 'creator',
-    attributes: ['id', 'username', 'displayName', 'profileImage'],
-  },
-  {
     model: Message,
     as: 'lastMessage',
-    attributes: ['id', 'content', 'type', 'mediaUrl', 'createdAt'],
+    attributes: ['id', 'senderId', 'content', 'type', 'mediaUrl', 'createdAt'],
   },
 ];
 

@@ -6,6 +6,12 @@ import { escapeLikePattern } from '../../utils/escapeLikePattern';
 
 const senderInclude = [{ model: User, as: 'sender', attributes: ['id', 'username', 'displayName', 'profileImage'] }];
 
+const unreadBy = (userId: string, chatId: string | string[]): WhereOptions<MessageAttributes> => ({
+  chatId,
+  senderId: { [Op.ne]: userId },
+  [Op.not]: { readBy: { [Op.contains]: [userId] } },
+});
+
 const MEDIA_TYPES = [MessageType.IMAGE, MessageType.VIDEO, MessageType.AUDIO, MessageType.FILE];
 
 export class MessageRepositoryImpl implements MessageRepository {
@@ -114,12 +120,19 @@ export class MessageRepositoryImpl implements MessageRepository {
   }
 
   countUnread(chatId: string, userId: string): Promise<number> {
-    return Message.count({
-      where: {
-        chatId,
-        senderId: { [Op.ne]: userId },
-        [Op.not]: { readBy: { [Op.contains]: [userId] } },
-      },
-    });
+    return Message.count({ where: unreadBy(userId, chatId) });
+  }
+
+  async countUnreadByChat(chatIds: string[], userId: string): Promise<Map<string, number>> {
+    if (chatIds.length === 0) {
+      return new Map();
+    }
+    const rows = (await Message.findAll({
+      attributes: ['chatId', [Sequelize.fn('COUNT', Sequelize.col('id')), 'count']],
+      where: unreadBy(userId, chatIds),
+      group: ['chatId'],
+      raw: true,
+    })) as unknown as Array<{ chatId: string; count: string }>;
+    return new Map(rows.map((row) => [row.chatId, Number(row.count)]));
   }
 }

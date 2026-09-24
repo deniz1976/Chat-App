@@ -1,5 +1,7 @@
 import { Chat, ChatType } from '../../domain/entities/Chat';
+import { User } from '../../domain/entities/User';
 import { ChatRepository, ChatUpdate } from '../../domain/repositories/ChatRepository';
+import { MessageRepository } from '../../domain/repositories/MessageRepository';
 import { UserRepository } from '../../domain/repositories/UserRepository';
 import { DuplicateEntityError } from '../../domain/repositories/errors';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../errors';
@@ -11,8 +13,14 @@ export interface CreateChatInput {
   avatar?: string | null;
 }
 
-export interface CreateChatResult {
+export interface ChatView {
   chat: Chat;
+  members: User[];
+  unreadCount: number;
+}
+
+export interface CreateChatResult {
+  view: ChatView;
   created: boolean;
 }
 
@@ -20,19 +28,21 @@ export class ChatService {
   constructor(
     private readonly chats: ChatRepository,
     private readonly users: UserRepository,
+    private readonly messages: MessageRepository,
   ) {}
 
-  listForUser(userId: string): Promise<Chat[]> {
-    return this.chats.findForUser(userId);
+  async listForUser(userId: string): Promise<ChatView[]> {
+    return this.buildViews(await this.chats.findForUser(userId), userId);
   }
 
-  async getForUser(chatId: string, userId: string): Promise<Chat> {
+  async getForUser(chatId: string, userId: string): Promise<ChatView> {
     const chat = await this.chats.findByIdWithDetails(chatId);
     if (!chat) {
       throw new NotFoundError('Chat not found');
     }
     this.assertParticipant(chat, userId);
-    return chat;
+    const [view] = await this.buildViews([chat], userId);
+    return view;
   }
 
   async requireMembership(chatId: string, userId: string): Promise<Chat> {
@@ -45,13 +55,14 @@ export class ChatService {
   }
 
   async create(userId: string, input: CreateChatInput): Promise<CreateChatResult> {
-    if (input.type === ChatType.GROUP) {
-      return { chat: await this.createGroup(userId, input), created: true };
-    }
-    return this.findOrCreateDirect(userId, input);
+    const { chat, created } =
+      input.type === ChatType.GROUP
+        ? { chat: await this.createGroup(userId, input), created: true }
+        : await this.findOrCreateDirect(userId, input);
+    return { view: await this.getForUser(chat.id, userId), created };
   }
 
-  async update(chatId: string, userId: string, data: ChatUpdate): Promise<Chat> {
+  async update(chatId: string, userId: string, data: ChatUpdate): Promise<ChatView> {
     const chat = await this.requireChat(chatId);
     if (chat.type === ChatType.DIRECT) {
       throw new ForbiddenError('Cannot update details of a direct chat');
@@ -60,7 +71,8 @@ export class ChatService {
     if (data.name === undefined && data.avatar === undefined) {
       throw new BadRequestError('No update data provided');
     }
-    return (await this.chats.update(chatId, data))!;
+    await this.chats.update(chatId, data);
+    return this.getForUser(chatId, userId);
   }
 
   async delete(chatId: string, userId: string): Promise<void> {
@@ -157,7 +169,7 @@ export class ChatService {
     });
   }
 
-  private async findOrCreateDirect(userId: string, input: CreateChatInput): Promise<CreateChatResult> {
+  private async findOrCreateDirect(userId: string, input: CreateChatInput): Promise<{ chat: Chat; created: boolean }> {
     if (input.participants.length !== 1) {
       throw new BadRequestError('Direct chats must have exactly one participant (other than yourself)');
     }
@@ -194,6 +206,22 @@ export class ChatService {
       }
       throw error;
     }
+  }
+
+  private async buildViews(chats: Chat[], userId: string): Promise<ChatView[]> {
+    const [members, unread] = await Promise.all([
+      this.users.findByIds([...new Set(chats.flatMap((chat) => chat.participants))]),
+      this.messages.countUnreadByChat(
+        chats.map((chat) => chat.id),
+        userId,
+      ),
+    ]);
+    const membersById = new Map(members.map((member) => [member.id, member]));
+    return chats.map((chat) => ({
+      chat,
+      members: chat.participants.flatMap((id) => membersById.get(id) ?? []),
+      unreadCount: unread.get(chat.id) ?? 0,
+    }));
   }
 
   private async assertUsersExist(userIds: string[]): Promise<void> {

@@ -8,6 +8,7 @@ export interface UserUpdate {
 
 export interface UserRepository {
   findById(id: string): Promise<User | null>;
+  findByIds(ids: string[]): Promise<User[]>;
   findByEmail(email: string): Promise<User | null>;
   existsByUsernameOrEmail(username: string, email: string): Promise<boolean>;
   countExisting(ids: string[]): Promise<number>;

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { chatService } from '../../container';
+import { toChatResponse } from '../presenters/chatPresenter';
 
 /**
  * @swagger
@@ -34,10 +35,51 @@ import { chatService } from '../../container';
  *           items:
  *             type: string
  *             format: uuid
- *         lastMessageId:
- *           type: string
- *           format: uuid
+ *         members:
+ *           type: array
+ *           description: Public profiles of the participants
+ *           items:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: string
+ *                 format: uuid
+ *               username:
+ *                 type: string
+ *               displayName:
+ *                 type: string
+ *               profileImage:
+ *                 type: string
+ *                 nullable: true
+ *               status:
+ *                 type: string
+ *                 enum: [online, offline, away]
+ *               lastSeen:
+ *                 type: string
+ *                 format: date-time
+ *         lastMessage:
+ *           type: object
  *           nullable: true
+ *           properties:
+ *             id:
+ *               type: string
+ *               format: uuid
+ *             senderId:
+ *               type: string
+ *               format: uuid
+ *             content:
+ *               type: string
+ *             type:
+ *               type: string
+ *             mediaUrl:
+ *               type: string
+ *               nullable: true
+ *             createdAt:
+ *               type: string
+ *               format: date-time
+ *         unreadCount:
+ *           type: integer
+ *           description: Messages from others not yet read by the current user
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -69,7 +111,8 @@ import { chatService } from '../../container';
  *         description: Server error
  */
 export const getChats = async (req: Request, res: Response): Promise<void> => {
-  res.status(200).json(await chatService.listForUser(req.user!.id));
+  const views = await chatService.listForUser(req.user!.id);
+  res.status(200).json(views.map(toChatResponse));
 };
 
 /**
@@ -105,7 +148,7 @@ export const getChats = async (req: Request, res: Response): Promise<void> => {
  *         description: Server error
  */
 export const getChat = async (req: Request, res: Response): Promise<void> => {
-  res.status(200).json(await chatService.getForUser(req.params.id, req.user!.id));
+  res.status(200).json(toChatResponse(await chatService.getForUser(req.params.id, req.user!.id)));
 };
 
 /**
@@ -157,13 +200,13 @@ export const getChat = async (req: Request, res: Response): Promise<void> => {
  *         description: Server error
  */
 export const createChat = async (req: Request, res: Response): Promise<void> => {
-  const { chat, created } = await chatService.create(req.user!.id, req.body);
-  res.status(created ? 201 : 200).json(chat);
+  const { view, created } = await chatService.create(req.user!.id, req.body);
+  res.status(created ? 201 : 200).json(toChatResponse(view));
 };
 
 export const updateChat = async (req: Request, res: Response): Promise<void> => {
   const { name, avatar } = req.body;
-  res.status(200).json(await chatService.update(req.params.id, req.user!.id, { name, avatar }));
+  res.status(200).json(toChatResponse(await chatService.update(req.params.id, req.user!.id, { name, avatar })));
 };
 
 export const deleteChat = async (req: Request, res: Response): Promise<void> => {
