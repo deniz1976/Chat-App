@@ -1,7 +1,10 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
 import { Duplex } from 'stream';
+import joi from 'joi';
 import { logger } from './utils/logger';
+import { Chat } from './domain/entities/Chat';
+import { Message } from './domain/entities/Message';
 import { AuthenticatedUser, getTokenFromCookieHeader, resolveUserFromToken } from './api/middlewares/auth';
 
 export enum WebSocketMessageType {
@@ -27,6 +30,43 @@ interface AuthenticatedWebSocket extends WebSocket {
 const clients = new Map<string, AuthenticatedWebSocket>();
 
 const userStatuses = new Map<string, 'online' | 'away' | 'offline'>();
+
+const typingPayloadSchema = joi.object({
+    chatId: joi.string().uuid().required(),
+    isTyping: joi.boolean().required(),
+});
+
+const readReceiptPayloadSchema = joi.object({
+    chatId: joi.string().uuid().required(),
+    messageId: joi.string().uuid().required(),
+});
+
+class InvalidPayloadError extends Error {}
+
+const validatePayload = <T>(schema: joi.ObjectSchema<T>, payload: unknown): T => {
+    const { error, value } = schema.validate(payload);
+    if (error) {
+        throw new InvalidPayloadError(error.details[0].message);
+    }
+    return value;
+};
+
+const getParticipantsIfMember = async (chatId: string, userId: string): Promise<string[] | null> => {
+    const chat = await Chat.findByPk(chatId, { attributes: ['participants'] });
+    if (!chat || !chat.participants.includes(userId)) {
+        return null;
+    }
+    return chat.participants;
+};
+
+const sendError = (ws: WebSocket, message: string) => {
+    if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            type: WebSocketMessageType.ERROR,
+            payload: { message }
+        }));
+    }
+};
 
 const isSameOrigin = (req: http.IncomingMessage): boolean => {
     const { origin, host } = req.headers;
@@ -113,30 +153,34 @@ export const initializeWebSocket = (server: http.Server) => {
         updateUserStatus(userData.id, 'online');
         logger.info(`WebSocket client connected: ${userData.username} (ID: ${userData.id})`);
 
-        ws.on('message', (message: Buffer) => {
+        ws.on('message', async (message: Buffer) => {
+            let parsedMessage: WebSocketMessage;
             try {
-                const parsedMessage = JSON.parse(message.toString()) as WebSocketMessage;
-                logger.info(`Received message from ${ws.userId}:`, { type: parsedMessage.type });
-                
+                parsedMessage = JSON.parse(message.toString()) as WebSocketMessage;
+            } catch {
+                logger.warn(`Received malformed WebSocket message from ${ws.userId}`);
+                sendError(ws, 'Invalid message format');
+                return;
+            }
+
+            try {
                 switch (parsedMessage.type) {
                     case WebSocketMessageType.TYPING:
-                        handleTypingIndicator(parsedMessage.payload, ws.userId!);
+                        await handleTypingIndicator(parsedMessage.payload, ws.userId!);
                         break;
                     case WebSocketMessageType.READ_RECEIPT:
-                        handleReadReceipt(parsedMessage.payload, ws.userId!);
+                        await handleReadReceipt(parsedMessage.payload, ws.userId!);
                         break;
                     default:
                         logger.warn(`Unhandled message type: ${parsedMessage.type}`);
                 }
-            } catch (e) {
-                logger.error(`Failed to parse message from ${ws.userId} or invalid message format`, { message: message.toString(), error: e });
-                
-                if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({
-                        type: WebSocketMessageType.ERROR,
-                        payload: { message: 'Invalid message format' }
-                    }));
+            } catch (error) {
+                if (error instanceof InvalidPayloadError) {
+                    sendError(ws, error.message);
+                    return;
                 }
+                logger.error(`Failed to handle ${parsedMessage.type} from ${ws.userId}`, { error });
+                sendError(ws, 'Failed to process message');
             }
         });
 
@@ -162,47 +206,46 @@ export const initializeWebSocket = (server: http.Server) => {
     logger.info('WebSocket server initialized');
 };
 
-function handleTypingIndicator(payload: { 
-    chatId: string; 
-    isTyping: boolean; 
-    participantIds: string[] 
-}, senderId: string) {
-    const { chatId, isTyping, participantIds } = payload;
-    
-    if (participantIds && Array.isArray(participantIds)) {
-        const message = {
-            type: WebSocketMessageType.TYPING,
-            payload: {
-                chatId,
-                userId: senderId,
-                isTyping
-            }
-        };
-        
-        broadcastMessageToUsers(participantIds, message, senderId);
+async function handleTypingIndicator(payload: unknown, senderId: string) {
+    const { chatId, isTyping } = validatePayload(typingPayloadSchema, payload);
+
+    const participants = await getParticipantsIfMember(chatId, senderId);
+    if (!participants) {
+        throw new InvalidPayloadError('You are not a participant in this chat');
     }
+
+    broadcastMessageToUsers(participants, {
+        type: WebSocketMessageType.TYPING,
+        payload: {
+            chatId,
+            userId: senderId,
+            isTyping
+        }
+    }, senderId);
 }
 
-function handleReadReceipt(payload: { 
-    chatId: string; 
-    messageId: string; 
-    participantIds: string[] 
-}, readerId: string) {
-    const { chatId, messageId, participantIds } = payload;
-    
-    if (participantIds && Array.isArray(participantIds)) {
-        const message = {
-            type: WebSocketMessageType.READ_RECEIPT,
-            payload: {
-                chatId,
-                messageId,
-                readerId,
-                timestamp: new Date().toISOString()
-            }
-        };
-        
-        broadcastMessageToUsers(participantIds, message);
+async function handleReadReceipt(payload: unknown, readerId: string) {
+    const { chatId, messageId } = validatePayload(readReceiptPayloadSchema, payload);
+
+    const participants = await getParticipantsIfMember(chatId, readerId);
+    if (!participants) {
+        throw new InvalidPayloadError('You are not a participant in this chat');
     }
+
+    const messageExists = await Message.count({ where: { id: messageId, chatId } });
+    if (!messageExists) {
+        throw new InvalidPayloadError('Message not found in this chat');
+    }
+
+    broadcastMessageToUsers(participants, {
+        type: WebSocketMessageType.READ_RECEIPT,
+        payload: {
+            chatId,
+            messageId,
+            readerId,
+            timestamp: new Date().toISOString()
+        }
+    });
 }
 
 function updateUserStatus(userId: string, status: 'online' | 'away' | 'offline') {

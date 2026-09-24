@@ -1018,17 +1018,11 @@ function sendReadReceipt(chatId, messageId) {
         return;
     }
     
-    const chat = chatCache[chatId];
-    if (!chat || !chat.participants) {
-        return;
-    }
-    
     const message = {
         type: WS_MESSAGE_TYPES.READ_RECEIPT,
         payload: {
             chatId,
-            messageId,
-            participantIds: chat.participants
+            messageId
         }
     };
     
