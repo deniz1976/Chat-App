@@ -91,7 +91,7 @@ const dispatch = async (message: ClientMessage, user: AuthenticatedUser): Promis
         }
         case RealtimeEventType.READ_RECEIPT: {
             const { chatId, messageId } = validate(readReceiptPayloadSchema, message.payload);
-            await messageService.publishReadReceipt(chatId, messageId, user.id);
+            await messageService.markAsRead(messageId, user.id, chatId);
             break;
         }
         default:

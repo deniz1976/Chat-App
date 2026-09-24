@@ -77,10 +77,21 @@ export class MessageService {
     }
   }
 
-  async markAsRead(messageId: string, userId: string): Promise<void> {
+  async markAsRead(messageId: string, userId: string, expectedChatId?: string): Promise<void> {
     const message = await this.requireMessage(messageId);
-    await this.chatService.requireMembership(message.chatId, userId);
-    await this.messages.markAsRead(messageId, userId);
+    if (expectedChatId && message.chatId !== expectedChatId) {
+      throw new NotFoundError('Message not found in this chat');
+    }
+    const chat = await this.chatService.requireMembership(message.chatId, userId);
+
+    if (!(await this.messages.markAsRead(messageId, userId))) {
+      return;
+    }
+
+    this.notifier.sendToUsers(chat.participants, {
+      type: RealtimeEventType.READ_RECEIPT,
+      payload: { chatId: chat.id, messageId, readerId: userId, timestamp: new Date().toISOString() },
+    }, userId);
   }
 
   async countUnread(chatId: string, userId: string): Promise<number> {
@@ -104,17 +115,6 @@ export class MessageService {
       type: RealtimeEventType.TYPING,
       payload: { chatId, userId, isTyping },
     }, userId);
-  }
-
-  async publishReadReceipt(chatId: string, messageId: string, readerId: string): Promise<void> {
-    const chat = await this.chatService.requireMembership(chatId, readerId);
-    if (!(await this.messages.existsInChat(messageId, chatId))) {
-      throw new NotFoundError('Message not found in this chat');
-    }
-    this.notifier.sendToUsers(chat.participants, {
-      type: RealtimeEventType.READ_RECEIPT,
-      payload: { chatId, messageId, readerId, timestamp: new Date().toISOString() },
-    });
   }
 
   private async requireMessage(messageId: string): Promise<Message> {
