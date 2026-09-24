@@ -1,4 +1,4 @@
-import { forwardRef, useState, type CSSProperties, type ForwardedRef } from 'react';
+import { forwardRef, useRef, useState, type CSSProperties, type ForwardedRef } from 'react';
 import type { Chat } from '../api/types';
 import { cordFor } from '../lib/cords';
 import { chatTitle, otherMember, presenceText } from '../lib/format';
@@ -7,6 +7,8 @@ import type { ThreadMessage } from '../state/store';
 import { Avatar } from './Avatar';
 import { Composer, type ComposerMode } from './Composer';
 import { MessageList } from './MessageList';
+import { MessageSearch } from './MessageSearch';
+import { focusMessage } from '../lib/focusMessage';
 
 interface LineProps {
   onBack(): void;
@@ -34,8 +36,10 @@ const LineView = ({
   onNewLine,
   socketRef,
 }: LineProps & { socketRef: ForwardedRef<HTMLSpanElement> }) => {
-  const { state } = useChat();
+  const { state, actions } = useChat();
   const [mode, setMode] = useState<ComposerMode>({ kind: 'new' });
+  const [searching, setSearching] = useState(false);
+  const lineRef = useRef<HTMLElement>(null);
   const chat = state.activeChatId ? state.chats[state.activeChatId] : undefined;
   const thread = chat ? state.threads[chat.id] : undefined;
 
@@ -80,6 +84,7 @@ const LineView = ({
 
   return (
     <main
+      ref={lineRef}
       className="line"
       style={{ '--cord': `var(--cord-${cord})`, '--cord-text': `var(--cord-${cord}-text)` } as CSSProperties}
       aria-label={`Conversation with ${title}`}
@@ -101,10 +106,31 @@ const LineView = ({
           <h2>{title}</h2>
           <span className={`presence ${presenceClass}`}>{presence}</span>
         </div>
-        <button type="button" className="key key-ghost line-details" onClick={() => onOpenDetails(chat.id)}>
-          Details
-        </button>
+        <div className="line-actions">
+          <button
+            type="button"
+            className="key key-ghost"
+            aria-pressed={searching}
+            onClick={() => setSearching(!searching)}
+          >
+            Search
+          </button>
+          <button type="button" className="key key-ghost" onClick={() => onOpenDetails(chat.id)}>
+            Details
+          </button>
+        </div>
       </header>
+      {searching && (
+        <MessageSearch
+          chatId={chat.id}
+          onClose={() => setSearching(false)}
+          onSelect={async (messageId) => {
+            if (await actions.revealMessage(chat.id, messageId)) {
+              requestAnimationFrame(() => focusMessage(lineRef.current, messageId));
+            }
+          }}
+        />
+      )}
       <MessageList
         chat={chat}
         thread={thread}

@@ -1,8 +1,9 @@
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { Chat, MessageSender, User } from '../api/types';
 import { formatDay, isSameDay } from '../lib/format';
 import { useChat } from '../state/ChatProvider';
 import type { Thread, ThreadMessage } from '../state/store';
+import { focusMessage } from '../lib/focusMessage';
 import { MessageItem } from './MessageItem';
 
 const GROUP_WINDOW_MS = 5 * 60 * 1000;
@@ -41,7 +42,6 @@ export const MessageList = ({
   const firstId = useRef<string | undefined>(undefined);
   const lastId = useRef<string | undefined>(undefined);
   const items = useMemo(() => thread?.items ?? [], [thread?.items]);
-  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   useLayoutEffect(() => {
     const element = container.current;
@@ -92,13 +92,7 @@ export const MessageList = ({
     state.users[senderId] ?? fallback ?? { displayName: 'Unknown', profileImage: null };
 
   const jumpTo = (messageId: string) => {
-    const target = container.current?.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`);
-    if (!target) {
-      return;
-    }
-    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    setHighlightedId(messageId);
-    window.setTimeout(() => setHighlightedId((current) => (current === messageId ? null : current)), 1600);
+    focusMessage(container.current, messageId);
   };
 
   return (
@@ -126,7 +120,6 @@ export const MessageList = ({
               replySender={message.replyTo ? senderOf(message.replyTo.senderId) : undefined}
               mine={message.senderId === meId}
               continued={!newDay && message.id !== firstUnreadId && isContinuation(message, previous)}
-              highlighted={message.id === highlightedId}
               onReply={onReply}
               onEdit={onEdit}
               onOpenImage={onOpenImage}

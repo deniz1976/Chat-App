@@ -16,12 +16,14 @@ import { attachmentKind, messageTypeFor } from '../lib/attachments';
 import { initialState, reducer, TYPING_TTL_MS, type State, type ThreadMessage } from './store';
 
 const PAGE_SIZE = 50;
+const MAX_REVEAL_PAGES = 20;
 const TYPING_SIGNAL_INTERVAL_MS = 3000;
 const TYPING_IDLE_MS = 4000;
 
 export interface ChatActions {
   selectChat(chatId: string | null): void;
   loadOlder(chatId: string): Promise<void>;
+  revealMessage(chatId: string, messageId: string): Promise<boolean>;
   sendText(chatId: string, content: string, replyTo?: ThreadMessage): void;
   sendAttachment(chatId: string, file: File, caption: string, replyTo?: ThreadMessage): void;
   editMessage(message: ThreadMessage, content: string): Promise<void>;
@@ -318,6 +320,19 @@ export const ChatProvider = ({ me, onSignedOut, children }: ChatProviderProps) =
         } catch {
           dispatch({ type: 'threadFailed', chatId });
         }
+      },
+
+      async revealMessage(chatId, messageId) {
+        const isLoaded = () => stateRef.current.threads[chatId]?.items.some((item) => item.id === messageId) ?? false;
+        for (let page = 0; page < MAX_REVEAL_PAGES && !isLoaded(); page++) {
+          const thread = stateRef.current.threads[chatId];
+          if (!thread?.hasMore) {
+            break;
+          }
+          await this.loadOlder(chatId);
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+        return isLoaded();
       },
 
       sendText(chatId, content, replyTo) {

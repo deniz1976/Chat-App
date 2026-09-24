@@ -16,7 +16,6 @@ interface MessageItemProps {
   replySender: Sender | undefined;
   mine: boolean;
   continued: boolean;
-  highlighted: boolean;
   onReply(message: ThreadMessage): void;
   onEdit(message: ThreadMessage): void;
   onOpenImage(url: string): void;
@@ -52,7 +51,6 @@ export const MessageItem = ({
   replySender,
   mine,
   continued,
-  highlighted,
   onReply,
   onEdit,
   onOpenImage,
@@ -73,13 +71,7 @@ export const MessageItem = ({
     }
   };
 
-  const classes = [
-    'msg',
-    mine && 'msg-mine',
-    continued && 'continued',
-    message.localStatus === 'sending' && 'sending',
-    highlighted && 'highlighted',
-  ]
+  const classes = ['msg', mine && 'msg-mine', continued && 'continued', message.localStatus === 'sending' && 'sending']
     .filter(Boolean)
     .join(' ');
 

@@ -83,6 +83,8 @@ export const api = {
   messages: (chatId: string, before?: string, limit = 50) =>
     request<Message[]>('GET', `/messages/chat/${chatId}?limit=${limit}${before ? `&before=${before}` : ''}`),
   sendMessage: (input: SendMessageInput) => request<Message>('POST', '/messages', input),
+  searchMessages: (chatId: string, query: string) =>
+    request<Message[]>('GET', `/messages/chat/${chatId}/search?q=${encodeURIComponent(query)}&limit=30`),
   updateMessage: (id: string, content: string) => request<Message>('PUT', `/messages/${id}`, { content }),
   deleteMessage: (id: string) => request<void>('DELETE', `/messages/${id}`),
 
