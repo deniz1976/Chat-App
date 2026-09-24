@@ -32,7 +32,7 @@ An advanced real-time chat application built with Node.js, TypeScript, WebSocket
 *   **Validation:** Joi (for robust request data validation).
 *   **Logging:** Winston (a versatile logging library for Node.js, configured for console and file output).
 *   **Security:** Helmet (helps secure Express apps by setting various HTTP headers), CORS (enables Cross-Origin Resource Sharing), express-rate-limit (basic rate limiting to prevent abuse).
-*   **Containerization:** Docker (Dockerfile provided for building container images).
+*   **Containerization:** Docker (multi-stage `Dockerfile` and `docker-compose.yml` with PostgreSQL).
 
 ## Project Structure
 
@@ -282,7 +282,17 @@ Several security measures are implemented:
 
 ## Docker Support
 
-*   A `dockerfile` is included in the root directory, allowing you to build a Docker image for the application.
-*   A `.dockerignore` file specifies files and directories to exclude from the image build context, optimizing the image size.
-*   To build the image: `docker build -t chat-app .`
-*   To run the container (ensure required environment variables are passed, e.g., via `-e` flags or a `.env` file): `docker run -p 3000:3000 --env-file .env chat-app` (adjust port mapping and env file as needed).
+*   `Dockerfile` builds a multi-stage image: the TypeScript sources are compiled in a build stage and the runtime image contains only production dependencies, `dist/` and `public/`. The container runs as the unprivileged `node` user and exposes a health check on `/health`.
+*   `docker-compose.yml` starts PostgreSQL, runs the migrations once through the `migrate` service and starts the application after they succeed:
+    ```bash
+    cp .env.example .env   # or create .env with at least DB_PASSWORD and JWT_SECRET
+    docker compose up --build
+    ```
+    The application is then available on `http://localhost:3000`. Compose sets the database connection itself, so `.env` only needs `DB_PASSWORD`, `JWT_SECRET` and optional settings such as the R2 credentials.
+*   The image runs with `NODE_ENV=production`, so the auth cookie is marked `Secure`. Browsers accept it on `http://localhost`, but any other host must be served over HTTPS.
+*   To run the image on its own, apply the migrations first and then start the server:
+    ```bash
+    docker build -t chat-app .
+    docker run --rm --env-file .env chat-app node dist/infrastructure/database/migrate.js up
+    docker run -p 3000:3000 --env-file .env chat-app
+    ```
