@@ -96,6 +96,7 @@ public/                   # Static frontend files (HTML, CSS, JavaScript).
     # Server Configuration
     PORT=3000
     NODE_ENV=development # or production
+    CORS_ORIGINS= # Comma-separated list of additional allowed origins. Leave empty when the frontend is served by this server
     TRUST_PROXY=false # Set to the number of reverse proxies in front of the app (e.g., 1) so rate limiting uses the client IP
 
     # Database Configuration (PostgreSQL)
@@ -241,7 +242,7 @@ Application configuration is managed via environment variables, loaded using the
 Several security measures are implemented:
 
 *   **Helmet:** Sets various HTTP headers to protect against common web vulnerabilities (e.g., XSS, clickjacking).
-*   **CORS:** Configured using the `cors` middleware to control which origins are allowed to access the API.
+*   **CORS:** Disabled by default because the frontend is served from the same origin. Additional origins can be allowed through `CORS_ORIGINS`, which also applies to WebSocket handshakes.
 *   **JWT Authentication:** The token is delivered in an httpOnly, SameSite=Strict cookie (`Secure` in production), so it is not readable from JavaScript and is not sent on cross-site requests. It secures both API endpoints and WebSocket connections.
 *   **Role-Based Authorization:** Users have a `role` of `user` (default) or `admin`. A user can update or delete only their own account; admins can manage any account and change roles through `PUT /api/v1/users/:id/role`. The first admin must be promoted directly in the database:
     ```sql

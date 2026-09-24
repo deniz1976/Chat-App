@@ -8,6 +8,7 @@ import { Message } from './domain/entities/Message';
 import { ConnectionRegistry } from './infrastructure/realtime/ConnectionRegistry';
 import { getContactIds, setUserStatus } from './infrastructure/realtime/presence';
 import { UserStatus } from './domain/entities/User';
+import { config } from './config';
 import { AuthenticatedUser, getTokenFromCookieHeader, resolveUserFromToken } from './api/middlewares/auth';
 
 export enum WebSocketMessageType {
@@ -69,10 +70,13 @@ const sendError = (ws: WebSocket, message: string) => {
     }
 };
 
-const isSameOrigin = (req: http.IncomingMessage): boolean => {
+const isAllowedOrigin = (req: http.IncomingMessage): boolean => {
     const { origin, host } = req.headers;
-    if (!origin || !host) {
+    if (!origin) {
         return false;
+    }
+    if (config.corsOrigins.includes(origin)) {
+        return true;
     }
     try {
         return new URL(origin).host === host;
@@ -98,7 +102,7 @@ export const initializeWebSocket = (server: http.Server) => {
     const wss = new WebSocketServer({ noServer: true });
 
     server.on('upgrade', async (req: http.IncomingMessage, socket: Duplex, head: Buffer) => {
-        if (!isSameOrigin(req)) {
+        if (!isAllowedOrigin(req)) {
             logger.warn('WebSocket upgrade rejected: origin mismatch', { origin: req.headers.origin });
             rejectUpgrade(socket, 403, 'Forbidden');
             return;

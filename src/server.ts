@@ -20,7 +20,9 @@ setupDatabase()
   .then(() => {
     logger.info('Database setup complete.');
 
-    app.use(cors());
+    if (config.corsOrigins.length > 0) {
+      app.use(cors({ origin: config.corsOrigins, credentials: true }));
+    }
     app.use(helmet({
       contentSecurityPolicy: {
         directives: {

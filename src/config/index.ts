@@ -11,6 +11,9 @@ const requireEnv = (name: string): string => {
   return value;
 };
 
+const parseList = (value?: string): string[] =>
+  (value ?? '').split(',').map(item => item.trim()).filter(Boolean);
+
 const parseTrustProxy = (value?: string): boolean | number | string => {
   if (!value || value === 'false') {
     return false;
@@ -41,6 +44,7 @@ export interface Config {
   port: number;
   nodeEnv: string;
   trustProxy: boolean | number | string;
+  corsOrigins: string[];
   db: {
     dialect: Dialect;
     host: string;
@@ -69,6 +73,7 @@ export const config: Config = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
   trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
+  corsOrigins: parseList(process.env.CORS_ORIGINS),
   db: {
     dialect: (process.env.DB_DIALECT as Dialect) || 'postgres',
     host: process.env.DB_HOST || 'localhost',
