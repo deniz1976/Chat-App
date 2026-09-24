@@ -26,7 +26,6 @@ export const errorHandler = (
   logger.error(`${err.statusCode} - ${err.message}`, {
     url: req.originalUrl,
     method: req.method,
-    body: req.body,
     stack: err.stack,
   });
 
@@ -35,7 +34,6 @@ export const errorHandler = (
       status: err.status,
       message: err.message,
       stack: err.stack,
-      error: err,
     });
   } else {
     res.status(err.statusCode).json({

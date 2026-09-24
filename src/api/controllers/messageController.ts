@@ -308,9 +308,9 @@ export const searchMessages = async (req: Request, res: Response): Promise<void>
         }
         const messages = await messageRepository.search(chatId, query, limit, offset);
         res.status(200).json(messages);
-        logger.info(`Searched messages in chat ${chatId} with query: ${query}`);
+        logger.info(`Searched messages in chat ${chatId}`);
     } catch (error: any) {
-        logger.error(`Error searching messages in chat ${chatId}`, { error, userId, query });
+        logger.error(`Error searching messages in chat ${chatId}`, { error, userId });
         res.status(500).json({ message: 'Failed to search messages' });
     }
 };

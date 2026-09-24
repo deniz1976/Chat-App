@@ -287,7 +287,7 @@ export const sendMessageToUser = (userId: string, message: object) => {
     const client = clients.get(userId);
     if (client && client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify(message));
-        logger.info(`Sent message to user ${userId}`, { message });
+        logger.info(`Sent message to user ${userId}`);
         return true;
     } else {
         logger.warn(`Attempted to send message to disconnected or non-existent user ${userId}`);

@@ -35,7 +35,7 @@ export class UserRepositoryImpl implements UserRepository {
     try {
       return await User.create(userData);
     } catch (error: any) {
-      logger.error('Error creating user', { error, userData });
+      logger.error('Error creating user', { error, username: userData.username });
       throw new Error(`Failed to create user: ${error.message}`);
     }
   }
@@ -50,7 +50,7 @@ export class UserRepositoryImpl implements UserRepository {
 
       return await user.update(userData);
     } catch (error: any) {
-      logger.error('Error updating user', { error, id, userData });
+      logger.error('Error updating user', { error, id, fields: Object.keys(userData) });
       throw new Error(`Failed to update user: ${error.message}`);
     }
   }
