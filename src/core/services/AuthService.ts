@@ -2,6 +2,7 @@ import { User } from '../../domain/entities/User';
 import { UserRepository } from '../../domain/repositories/UserRepository';
 import { DuplicateEntityError } from '../../domain/repositories/errors';
 import { ConflictError, UnauthorizedError } from '../errors';
+import { simulatePasswordVerification } from '../../utils/password';
 
 export interface RegisterInput {
   username: string;
@@ -34,7 +35,11 @@ export class AuthService {
 
   async login(email: string, password: string): Promise<User> {
     const user = await this.users.findByEmail(email);
-    if (!user || !(await user.comparePassword(password))) {
+    if (!user) {
+      await simulatePasswordVerification(password);
+      throw new UnauthorizedError('Invalid email or password');
+    }
+    if (!(await user.comparePassword(password))) {
       throw new UnauthorizedError('Invalid email or password');
     }
     return user;

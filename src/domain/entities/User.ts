@@ -1,5 +1,5 @@
 import { Model, DataTypes, Optional, Sequelize } from 'sequelize';
-import bcrypt from 'bcrypt';
+import { hashPassword, verifyPassword } from '../../utils/password';
 
 export type UserStatus = 'online' | 'offline' | 'away';
 
@@ -43,7 +43,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   declare deletedAt: Date | null;
 
   public async comparePassword(password: string): Promise<boolean> {
-    return bcrypt.compare(password, this.password);
+    return verifyPassword(password, this.password);
   }
 
   public static initialize(sequelize: Sequelize): void {
@@ -115,14 +115,12 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
         hooks: {
           beforeCreate: async (user: User) => {
             if (user.password) {
-              const salt = await bcrypt.genSalt(10);
-              user.password = await bcrypt.hash(user.password, salt);
+              user.password = await hashPassword(user.password);
             }
           },
           beforeUpdate: async (user: User) => {
             if (user.changed('password')) {
-              const salt = await bcrypt.genSalt(10);
-              user.password = await bcrypt.hash(user.password, salt);
+              user.password = await hashPassword(user.password);
             }
           },
         },
