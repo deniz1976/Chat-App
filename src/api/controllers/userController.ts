@@ -4,6 +4,7 @@ import { UserRepository } from '../../domain/repositories/UserRepository';
 import { UserRepositoryImpl } from '../../infrastructure/repositories/UserRepositoryImpl';
 import { UserCreationAttributes, UserRole } from '../../domain/entities/User';
 import { config } from '../../config';
+import { isAdmin } from '../middlewares/auth';
 
 const userRepository: UserRepository = new UserRepositoryImpl();
 
@@ -35,16 +36,16 @@ export const getUser = async (req: Request, res: Response): Promise<void> => {
             res.status(404).json({ message: 'User not found' });
             return;
         }
-        const userResponse = {
+        const canViewPrivateFields = req.user!.id === user.id || isAdmin(req.user);
+        res.status(200).json({
             id: user.id,
             username: user.username,
-            email: user.email, 
+            ...(canViewPrivateFields && { email: user.email }),
             displayName: user.displayName,
             profileImage: user.profileImage,
             status: user.status,
             lastSeen: user.lastSeen,
-        };
-        res.status(200).json(userResponse);
+        });
         logger.info(`Retrieved user with id: ${id}`);
     } catch (error: any) {
         logger.error(`Error getting user with id: ${id}`, { error });

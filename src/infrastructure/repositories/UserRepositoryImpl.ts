@@ -102,7 +102,6 @@ export class UserRepositoryImpl implements UserRepository {
           [Op.or]: [
             { username: { [Op.iLike]: `%${query}%` } },
             { displayName: { [Op.iLike]: `%${query}%` } },
-            { email: { [Op.iLike]: `%${query}%` } },
           ],
         },
         limit,
