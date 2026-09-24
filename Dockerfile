@@ -4,6 +4,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
+COPY web ./web
 RUN npm run build
 
 FROM node:22-bookworm-slim AS runtime
@@ -12,7 +13,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
-COPY public ./public
+COPY --from=build /app/web/dist ./web/dist
 RUN mkdir logs && chown node:node logs
 USER node
 EXPOSE 3000

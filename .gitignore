@@ -20,6 +20,7 @@ lerna-debug.log*
 
 # Build
 /dist
+/web/dist
 /build
 /out
 

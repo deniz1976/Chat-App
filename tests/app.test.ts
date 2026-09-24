@@ -29,8 +29,7 @@ describe('application', () => {
     expect(response.headers['content-security-policy']).toContain("script-src-attr 'none'");
   });
 
-  it('serves the frontend and the API documentation', async () => {
-    await request(app).get('/script.js').expect(200);
+  it('serves the API documentation', async () => {
     const docs = await request(app).get('/api-docs/swagger-ui-init.js').expect(200);
     expect(docs.text).toContain('/auth/login');
   });

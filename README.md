@@ -62,14 +62,14 @@ src/
 ├── utils/                # Logger and helpers.
 ├── container.ts          # Composition root wiring repositories, services and the notifier.
 └── server.ts             # Application entry point.
-public/                   # Static frontend files (HTML, CSS, JavaScript).
+web/                      # React + TypeScript frontend built with Vite (served from web/dist).
 ```
 
 ## Getting Started
 
 ### Prerequisites
 
-*   Node.js (v18 or higher)
+*   Node.js (v20.19 or higher)
 *   npm (usually comes with Node.js)
 *   PostgreSQL Server
 *   Cloudflare Account (for R2 object storage)
@@ -146,14 +146,15 @@ public/                   # Static frontend files (HTML, CSS, JavaScript).
 
 ### Running the Application
 
-*   **Development Mode (with Backend Auto-Restart):**
+*   **Development Mode:**
     ```bash
-    npm run dev
+    npm run dev       # API and WebSocket server on http://localhost:3000, restarts on changes under src/
+    npm run dev:web   # frontend with hot reload on http://localhost:5173, proxying /api and /ws to the server
     ```
-    The server restarts on changes under `src/` and listens on `http://localhost:3000` by default.
+    Open `http://localhost:5173` while developing the frontend. Set `API_URL` if the server runs elsewhere.
 
 *   **Production Mode:**
-    Compile the TypeScript sources into `dist/`:
+    Compile the server into `dist/` and the frontend into `web/dist/`:
     ```bash
     npm run build
     ```
@@ -164,18 +165,18 @@ public/                   # Static frontend files (HTML, CSS, JavaScript).
 
 ### Accessing the Frontend
 
-The frontend is served by the backend. Open `http://localhost:3000` (or the configured port) in your browser. Opening `public/index.html` directly from disk does not work because authentication relies on a same-origin cookie.
+After `npm run build`, the frontend is served by the backend. Open `http://localhost:3000` (or the configured port) in your browser. The frontend must be served from the same origin as the API because authentication relies on a same-origin cookie.
 
-## Key Features Implementation
+## Frontend
 
-*   **Avatar Upload:**
-    *   Frontend (`public/script.js`): Sends the image file via a PUT request to `/api/v1/users/profile/avatar`.
-    *   Backend (`src/api/middlewares/upload.ts`): Buffers the file in memory with `multer`, enforcing the allowed MIME types and size limit of the upload kind.
-    *   Backend (`src/core/services/UploadService.ts`): Verifies that images match their declared type by their file signature, stores the file in R2 under a generated key and returns its public URL. Uploads of generic files are stored with `Content-Disposition: attachment`.
-    *   Backend (`src/core/services/UserService.ts` -> `changeAvatar`): Updates the user's `profileImage` with the stored file URL.
-*   **Avatar Display:**
-    *   Frontend (`public/script.js`): Uses the `profileImage` URL (fetched from the API) directly in `<img>` tag `src` attributes.
-    *   R2 Configuration: Requires the R2 bucket to allow public read access via the configured `CLOUDFLARE_R2_PUBLIC_HOSTNAME`.
+The frontend in `web/` is a React and TypeScript application built with Vite. Its visual language follows an old telephone switchboard: every conversation is a jack on the board, a lamp shows whether the other person is online, and the open conversation is connected to the board with a coloured cord.
+
+*   `web/src/api/`: typed client for the REST API.
+*   `web/src/realtime/`: WebSocket client that reconnects with exponential backoff.
+*   `web/src/state/`: a reducer holding chats, message threads, presence and typing indicators, and a provider that applies realtime events, marks the open chat as read, sends messages optimistically and resynchronises after a reconnect.
+*   `web/src/components/`: the board (chat list), the line (conversation, message list and composer) and the dialogs for new chats, the profile and images.
+
+Fonts are bundled from `@fontsource` packages, so the frontend makes no requests to third-party hosts.
 
 ## API Documentation
 
@@ -203,20 +204,23 @@ Messages exchanged over WebSockets generally follow this JSON structure:
 }
 ```
 
-### Message Types (`WebSocketMessageType`)
+### Events sent by the client
 
-The following message types are handled by the server (sent from client or broadcasted by server):
+*   `TYPING`: `{ chatId, isTyping }`. Relayed to the other participants of the chat.
+*   `READ_RECEIPT`: `{ chatId, messageId }`. Marks one message as read. To mark a whole chat as read, use `POST /api/v1/chats/:id/read`.
 
-*   `NEW_MESSAGE`: Broadcasted by the server when a new chat message is created. Payload contains message details.
-*   `TYPING`: Sent by the client to indicate typing status. Broadcasted to other chat participants.
-    *   Payload: `{ chatId: string, isTyping: boolean, participantIds: string[] }`
-*   `READ_RECEIPT`: Sent by the client when they read messages. Broadcasted to relevant participants.
-    *   Payload: `{ chatId: string, messageId: string, participantIds: string[] }`
-*   `USER_STATUS`: Broadcasted by the server when a user's connection status changes (online/offline).
-    *   Payload: `{ userId: string, status: 'online' | 'offline', timestamp: string }`
-*   `CHAT_CREATED`: Potentially broadcasted when a new chat is created (verify specific implementation).
-*   `ERROR`: Sent by the server to a specific client if an error occurs processing their message (e.g., invalid format).
-    *   Payload: `{ message: string }`
+The server resolves recipients from the chat membership stored in the database and answers invalid events with an `ERROR` event.
+
+### Events sent by the server
+
+*   `NEW_MESSAGE`: the created message, sent to every connection of every participant, including the sender's other connections.
+*   `MESSAGE_UPDATED`: `{ message, isLastMessage }`.
+*   `MESSAGE_DELETED`: `{ chatId, messageId, lastMessage? }`. `lastMessage` is present when the deleted message was the latest one.
+*   `READ_RECEIPT`: `{ chatId, readerId, messageIds, timestamp }`.
+*   `TYPING`: `{ chatId, userId, isTyping }`.
+*   `USER_STATUS`: `{ userId, status, timestamp }`, sent to users who share a chat with that user.
+*   `CHAT_CREATED`, `CHAT_UPDATED`, `CHAT_REMOVED`: `{ chatId }`. Clients fetch the chat through the API to get its current state.
+*   `ERROR`: `{ message }`.
 
 ## Testing
 
@@ -282,7 +286,7 @@ Several security measures are implemented:
 
 ## Docker Support
 
-*   `Dockerfile` builds a multi-stage image: the TypeScript sources are compiled in a build stage and the runtime image contains only production dependencies, `dist/` and `public/`. The container runs as the unprivileged `node` user and exposes a health check on `/health`.
+*   `Dockerfile` builds a multi-stage image: the TypeScript sources are compiled in a build stage and the runtime image contains only production dependencies, `dist/` and the built frontend in `web/dist/`. The container runs as the unprivileged `node` user and exposes a health check on `/health`.
 *   `docker-compose.yml` starts PostgreSQL, runs the migrations once through the `migrate` service and starts the application after they succeed:
     ```bash
     cp .env.example .env   # or create .env with at least DB_PASSWORD and JWT_SECRET
