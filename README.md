@@ -107,7 +107,7 @@ public/                   # Static frontend files (HTML, CSS, JavaScript).
     DB_SSL=false # Set to true if using SSL connection
 
     # JWT Authentication
-    JWT_SECRET=generate_a_very_strong_random_secret_key # Use a long, random, secure string
+    JWT_SECRET=generate_a_very_strong_random_secret_key # Required, at least 32 characters. The server refuses to start without it.
     JWT_EXPIRES_IN=1d # e.g., 1d, 12h, 60m
 
     # Cloudflare R2 Configuration

@@ -24,16 +24,10 @@ declare global {
 }
 
 export const generateToken = (userId: string, username: string, email: string): string => {
-  const secret = config.jwt.secret;
-  if (!secret) {
-    logger.error('JWT secret is not defined in config.');
-    throw new Error('JWT secret configuration error.');
-  }
-
   return jwt.sign(
     { userId, username, email },
-    secret as string,
-    { expiresIn: 86400 }
+    config.jwt.secret,
+    { expiresIn: config.jwt.expiresIn as jwt.SignOptions['expiresIn'] }
   );
 };
 
