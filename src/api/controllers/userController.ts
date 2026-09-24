@@ -10,8 +10,7 @@ const userRepository: UserRepository = new UserRepositoryImpl();
 
 export const getUsers = async (req: Request, res: Response): Promise<void> => {
     try {
-        const limit = parseInt(req.query.limit as string) || 50;
-        const offset = parseInt(req.query.offset as string) || 0;
+        const { limit, offset } = res.locals.query as { limit: number; offset: number };
         const users = await userRepository.getAll(limit, offset);
         res.status(200).json(users.map(user => ({ 
             id: user.id,
@@ -141,9 +140,7 @@ export const updateRole = async (req: Request, res: Response): Promise<void> => 
 };
 
 export const searchUsers = async (req: Request, res: Response): Promise<void> => {
-    const query = req.query.q as string;
-    const limit = parseInt(req.query.limit as string) || 20;
-    const offset = parseInt(req.query.offset as string) || 0;
+    const { q: query, limit, offset } = res.locals.query as { q?: string; limit: number; offset: number };
 
     if (!query) {
         res.status(400).json({ message: 'Search query parameter "q" is required' });

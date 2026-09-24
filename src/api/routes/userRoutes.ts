@@ -13,6 +13,7 @@ import {
 import { authenticate, requireRole, requireSelfOrAdmin } from '../middlewares/auth';
 import { validateUserRole, validateUserStatus, validateUserUpdate } from '../validators/userValidator';
 import { catchErrors } from '../middlewares/errorHandler';
+import { validatePaginatedQuery } from '../validators/queryValidator';
 import uploadMiddleware from '../middlewares/upload';
 import { UserRole } from '../../domain/entities/User';
 
@@ -20,8 +21,8 @@ const router = express.Router();
 
 router.use(authenticate);
 
-router.get('/', catchErrors(getUsers));
-router.get('/search', catchErrors(searchUsers));
+router.get('/', validatePaginatedQuery, catchErrors(getUsers));
+router.get('/search', validatePaginatedQuery, catchErrors(searchUsers));
 router.get('/profile', catchErrors(getUserProfile));
 router.put('/profile/avatar', uploadMiddleware, catchErrors(updateUserProfileAvatar));
 router.get('/:id', catchErrors(getUser));

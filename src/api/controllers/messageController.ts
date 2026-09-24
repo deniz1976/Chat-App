@@ -3,18 +3,35 @@ import { logger } from '../../utils/logger';
 import { Message, MessageType } from '../../domain/entities/Message';
 import { Chat } from '../../domain/entities/Chat';
 import { User } from '../../domain/entities/User';
-import { Op } from 'sequelize';
+import { Op, WhereOptions } from 'sequelize';
 import { broadcastMessageToUsers } from '../../websocket';
+import { escapeLikePattern } from '../../utils/escapeLikePattern';
 
 const messageRepository = {
-    findByChatId: async (chatId: string, limit: number, offset: number) => {
-        return Message.findAll({
-            where: { chatId },
+    findPageByChatId: async (chatId: string, limit: number, beforeId?: string) => {
+        const where: WhereOptions = { chatId };
+
+        if (beforeId) {
+            const cursor = await Message.findOne({ where: { id: beforeId, chatId }, attributes: ['id', 'createdAt'] });
+            if (!cursor) {
+                return null;
+            }
+            Object.assign(where, {
+                [Op.or]: [
+                    { createdAt: { [Op.lt]: cursor.createdAt } },
+                    { createdAt: cursor.createdAt, id: { [Op.lt]: cursor.id } },
+                ],
+            });
+        }
+
+        const messages = await Message.findAll({
+            where,
             limit,
-            offset,
-            order: [['createdAt', 'ASC']],
+            order: [['createdAt', 'DESC'], ['id', 'DESC']],
             include: [{ model: User, as: 'sender', attributes: ['id', 'username', 'displayName', 'profileImage'] }]
         });
+
+        return messages.reverse();
     },
     findById: async (id: string) => {
         return Message.findByPk(id, {
@@ -69,7 +86,7 @@ const messageRepository = {
         return Message.findAll({
             where: {
                 chatId,
-                content: { [Op.iLike]: `%${query}%` }
+                content: { [Op.iLike]: `%${escapeLikePattern(query)}%` }
             },
             limit,
             offset,
@@ -87,8 +104,7 @@ const checkChatParticipation = async (chatId: string, userId: string): Promise<b
 export const getMessages = async (req: Request, res: Response): Promise<void> => {
     const { chatId } = req.params;
     const userId = req.user!.id;
-    const limit = parseInt(req.query.limit as string) || 100;
-    const offset = parseInt(req.query.offset as string) || 0;
+    const { limit, before } = res.locals.query as { limit: number; before?: string };
 
     try {
         const isParticipant = await checkChatParticipation(chatId, userId);
@@ -96,7 +112,11 @@ export const getMessages = async (req: Request, res: Response): Promise<void> =>
             res.status(403).json({ message: 'You are not a participant in this chat' });
             return;
         }
-        const messages = await messageRepository.findByChatId(chatId, limit, offset);
+        const messages = await messageRepository.findPageByChatId(chatId, limit, before);
+        if (!messages) {
+            res.status(400).json({ message: 'Invalid pagination cursor' });
+            return;
+        }
         res.status(200).json(messages);
         logger.info(`Retrieved messages for chat ${chatId}`);
     } catch (error: any) {
@@ -270,8 +290,7 @@ export const getUnreadCount = async (req: Request, res: Response): Promise<void>
 export const getMediaMessages = async (req: Request, res: Response): Promise<void> => {
     const { chatId } = req.params;
     const userId = req.user!.id;
-    const limit = parseInt(req.query.limit as string) || 50;
-    const offset = parseInt(req.query.offset as string) || 0;
+    const { limit, offset } = res.locals.query as { limit: number; offset: number };
 
     try {
         const isParticipant = await checkChatParticipation(chatId, userId);
@@ -290,10 +309,8 @@ export const getMediaMessages = async (req: Request, res: Response): Promise<voi
 
 export const searchMessages = async (req: Request, res: Response): Promise<void> => {
     const { chatId } = req.params;
-    const query = req.query.q as string;
+    const { q: query, limit, offset } = res.locals.query as { q?: string; limit: number; offset: number };
     const userId = req.user!.id;
-    const limit = parseInt(req.query.limit as string) || 50;
-    const offset = parseInt(req.query.offset as string) || 0;
 
     if (!query) {
         res.status(400).json({ message: 'Search query parameter "q" is required' });

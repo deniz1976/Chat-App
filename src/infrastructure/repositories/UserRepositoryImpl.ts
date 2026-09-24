@@ -2,6 +2,7 @@ import { Op } from 'sequelize';
 import { User, UserCreationAttributes } from '../../domain/entities/User';
 import { UserRepository } from '../../domain/repositories/UserRepository';
 import { logger } from '../../utils/logger';
+import { escapeLikePattern } from '../../utils/escapeLikePattern';
 
 export class UserRepositoryImpl implements UserRepository {
   async findById(id: string): Promise<User | null> {
@@ -97,11 +98,12 @@ export class UserRepositoryImpl implements UserRepository {
 
   async search(query: string, limit = 20, offset = 0): Promise<User[]> {
     try {
+      const pattern = `%${escapeLikePattern(query)}%`;
       return await User.findAll({
         where: {
           [Op.or]: [
-            { username: { [Op.iLike]: `%${query}%` } },
-            { displayName: { [Op.iLike]: `%${query}%` } },
+            { username: { [Op.iLike]: pattern } },
+            { displayName: { [Op.iLike]: pattern } },
           ],
         },
         limit,

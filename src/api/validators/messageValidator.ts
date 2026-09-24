@@ -1,6 +1,7 @@
 import joi from 'joi';
 import { Request, Response, NextFunction } from 'express';
 import { MessageType } from '../../domain/entities/Message';
+import { MAX_PAGE_SIZE, validateQuery } from './queryValidator';
 
 const messageCreationSchema = joi.object({
   chatId: joi.string().uuid().required().messages({
@@ -39,3 +40,10 @@ export const validateMessageUpdate = (req: Request, res: Response, next: NextFun
   }
   next();
 }; 
+
+const messageListQuerySchema = joi.object({
+  limit: joi.number().integer().min(1).max(MAX_PAGE_SIZE).default(50),
+  before: joi.string().uuid().optional(),
+});
+
+export const validateMessageListQuery = validateQuery(messageListQuerySchema);
