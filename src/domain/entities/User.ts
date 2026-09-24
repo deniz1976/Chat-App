@@ -3,6 +3,11 @@ import bcrypt from 'bcrypt';
 import { Chat } from './Chat';
 import { Message } from './Message';
 
+export enum UserRole {
+  USER = 'user',
+  ADMIN = 'admin',
+}
+
 export interface UserAttributes {
   id: string;
   username: string;
@@ -11,13 +16,14 @@ export interface UserAttributes {
   displayName: string;
   profileImage: string | null;
   status: 'online' | 'offline' | 'away';
+  role: UserRole;
   lastSeen: Date;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;
 }
 
-export interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'status' | 'lastSeen' | 'profileImage' | 'createdAt' | 'updatedAt' | 'deletedAt'> {}
+export interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'status' | 'role' | 'lastSeen' | 'profileImage' | 'createdAt' | 'updatedAt' | 'deletedAt'> {}
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: string;
@@ -27,6 +33,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public displayName!: string;
   public profileImage!: string | null;
   public status!: 'online' | 'offline' | 'away';
+  public role!: UserRole;
   public lastSeen!: Date;
   public createdAt!: Date;
   public updatedAt!: Date;
@@ -75,6 +82,11 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
         status: {
           type: DataTypes.ENUM('online', 'offline', 'away'),
           defaultValue: 'offline',
+        },
+        role: {
+          type: DataTypes.ENUM(...Object.values(UserRole)),
+          allowNull: false,
+          defaultValue: UserRole.USER,
         },
         lastSeen: {
           type: DataTypes.DATE,

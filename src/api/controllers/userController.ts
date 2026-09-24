@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { logger } from '../../utils/logger';
 import { UserRepository } from '../../domain/repositories/UserRepository';
 import { UserRepositoryImpl } from '../../infrastructure/repositories/UserRepositoryImpl';
-import { User } from '../../domain/entities/User';
+import { UserCreationAttributes, UserRole } from '../../domain/entities/User';
 import { config } from '../../config';
 
 const userRepository: UserRepository = new UserRepositoryImpl();
@@ -54,33 +54,7 @@ export const getUser = async (req: Request, res: Response): Promise<void> => {
 
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const updateData = req.body;
-
-    if (req.user?.id !== id /* && !isAdmin(req.user) */) {
-         // This check assumes req.user is populated by authenticate middleware
-         // For now, commenting out to allow updates, but implement proper checks!
-         // res.status(403).json({ message: 'Forbidden: You can only update your own profile' });
-         // return;
-         logger.warn(`User ${req.user?.id} attempting to update user ${id} without proper authorization checks.`);
-    }
-
-    if (updateData.password) {
-        delete updateData.password;
-        logger.warn(`Password update attempt for user ${id} ignored via general update endpoint.`);
-    }
-    if (updateData.status) {
-        delete updateData.status;
-        logger.warn(`Status update attempt for user ${id} ignored via general update endpoint.`);
-    }
-    if (updateData.email && req.user?.email !== updateData.email) {
-        
-        delete updateData.email; 
-        logger.warn(`Email update attempt for user ${id} ignored.`);
-    }
-    if (updateData.username && req.user?.username !== updateData.username) {
-        delete updateData.username; 
-        logger.warn(`Username update attempt for user ${id} ignored.`);
-    }
+    const updateData: Pick<Partial<UserCreationAttributes>, 'displayName' | 'profileImage'> = req.body;
 
     try {
         const updatedUser = await userRepository.update(id, updateData);
@@ -88,33 +62,22 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
             res.status(404).json({ message: 'User not found' });
             return;
         }
-        const userResponse = {
+        res.status(200).json({
             id: updatedUser.id,
             username: updatedUser.username,
             displayName: updatedUser.displayName,
             profileImage: updatedUser.profileImage,
             status: updatedUser.status,
-        };
-        res.status(200).json(userResponse);
-        logger.info(`Updated user with id: ${id}`);
+        });
+        logger.info(`User ${id} updated by ${req.user!.id}`);
     } catch (error: any) {
-        if (error.name === 'SequelizeUniqueConstraintError') {
-             logger.warn(`Unique constraint violation during user update for id: ${id}`, { error });
-             res.status(409).json({ message: 'Update failed due to unique constraint (e.g., email/username exists).' });
-        } else {
-            logger.error(`Error updating user with id: ${id}`, { error });
-            res.status(500).json({ message: 'Failed to update user' });
-        }
+        logger.error(`Error updating user with id: ${id}`, { error });
+        res.status(500).json({ message: 'Failed to update user' });
     }
 };
 
 export const deleteUser = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-
-    if (req.user?.id !== id) {
-        
-        logger.warn(`User ${req.user?.id} attempting to delete user ${id} without proper authorization checks.`);
-    }
 
     try {
         const deleted = await userRepository.delete(id);
@@ -122,8 +85,8 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
             res.status(404).json({ message: 'User not found or already deleted' });
             return;
         }
-        res.status(204).send(); 
-        logger.info(`Deleted user with id: ${id}`);
+        res.status(204).send();
+        logger.info(`User ${id} deleted by ${req.user!.id}`);
     } catch (error: any) {
         logger.error(`Error deleting user with id: ${id}`, { error });
         res.status(500).json({ message: 'Failed to delete user' });
@@ -134,18 +97,13 @@ export const updateStatus = async (req: Request, res: Response): Promise<void> =
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!status || !['online', 'offline', 'away'].includes(status)) {
-        res.status(400).json({ message: 'Invalid or missing status value' });
+    if (req.user!.id !== id) {
+        res.status(403).json({ message: 'Forbidden: You can only update your own status' });
         return;
     }
 
-     if (req.user?.id !== id) {
-         res.status(403).json({ message: 'Forbidden: You can only update your own status' });
-         return;
-     }
-
     try {
-        const updatedUser = await userRepository.updateStatus(id, status as 'online' | 'offline' | 'away');
+        const updatedUser = await userRepository.updateStatus(id, status);
         if (!updatedUser) {
             res.status(404).json({ message: 'User not found' });
             return;
@@ -155,6 +113,29 @@ export const updateStatus = async (req: Request, res: Response): Promise<void> =
     } catch (error: any) {
         logger.error(`Error updating status for user with id: ${id}`, { error });
         res.status(500).json({ message: 'Failed to update user status' });
+    }
+};
+
+export const updateRole = async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const { role } = req.body as { role: UserRole };
+
+    if (req.user!.id === id) {
+        res.status(400).json({ message: 'You cannot change your own role' });
+        return;
+    }
+
+    try {
+        const updatedUser = await userRepository.update(id, { role });
+        if (!updatedUser) {
+            res.status(404).json({ message: 'User not found' });
+            return;
+        }
+        res.status(200).json({ id: updatedUser.id, role: updatedUser.role });
+        logger.info(`Role of user ${id} set to ${role} by ${req.user!.id}`);
+    } catch (error: any) {
+        logger.error(`Error updating role for user with id: ${id}`, { error });
+        res.status(500).json({ message: 'Failed to update user role' });
     }
 };
 

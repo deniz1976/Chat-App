@@ -1,53 +1,44 @@
 import joi from 'joi';
 import { Request, Response, NextFunction } from 'express';
+import { UserRole } from '../../domain/entities/User';
 
 const userUpdateSchema = joi.object({
-  username: joi.string().alphanum().min(3).max(30).optional().messages({
-    'string.alphanum': 'Username can only contain alphanumeric characters',
-    'string.min': 'Username must be at least 3 characters',
-    'string.max': 'Username cannot exceed 30 characters'
-  }),
-  email: joi.string().email().optional().messages({
-    'string.email': 'Please enter a valid email address'
-  }),
   displayName: joi.string().min(2).max(50).optional().messages({
     'string.min': 'Display name must be at least 2 characters',
     'string.max': 'Display name cannot exceed 50 characters'
   }),
-  password: joi.string().min(6).optional().messages({
-    'string.min': 'Password must be at least 6 characters'
-  }),
-  currentPassword: joi.string().when('password', {
-    is: joi.exist(),
-    then: joi.required(),
-    otherwise: joi.optional()
-  }).messages({
-    'any.required': 'Current password is required when changing password'
-  }),
-  profileImage: joi.string().uri().allow(null, '').optional()
+  profileImage: joi.string().uri({ scheme: ['https'] }).allow(null).optional()
+}).min(1).messages({
+  'object.min': 'No update data provided',
+  'object.unknown': '{{#label}} cannot be updated through this endpoint'
 });
 
 const userStatusSchema = joi.object({
   status: joi.string().valid('online', 'offline', 'away').required().messages({
-    'string.valid': 'Invalid status value',
+    'any.only': 'Invalid status value',
     'any.required': 'Status is required'
   })
 });
 
-export const validateUserUpdate = (req: Request, res: Response, next: NextFunction): void => {
-  const { error } = userUpdateSchema.validate(req.body);
-  if (error) {
-    res.status(400).json({ message: error.details[0].message });
-    return;
-  }
-  next();
+const userRoleSchema = joi.object({
+  role: joi.string().valid(...Object.values(UserRole)).required().messages({
+    'any.only': 'Invalid role value',
+    'any.required': 'Role is required'
+  })
+});
+
+const validateBody = (schema: joi.ObjectSchema) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const { error, value } = schema.validate(req.body);
+    if (error) {
+      res.status(400).json({ message: error.details[0].message });
+      return;
+    }
+    req.body = value;
+    next();
+  };
 };
 
-export const validateUserStatus = (req: Request, res: Response, next: NextFunction): void => {
-  const { error } = userStatusSchema.validate(req.body);
-  if (error) {
-    res.status(400).json({ message: error.details[0].message });
-    return;
-  }
-  next();
-}; 
+export const validateUserUpdate = validateBody(userUpdateSchema);
+export const validateUserStatus = validateBody(userStatusSchema);
+export const validateUserRole = validateBody(userRoleSchema);

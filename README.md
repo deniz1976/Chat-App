@@ -245,6 +245,10 @@ Several security measures are implemented:
 *   **Helmet:** Sets various HTTP headers to protect against common web vulnerabilities (e.g., XSS, clickjacking).
 *   **CORS:** Configured using the `cors` middleware to control which origins are allowed to access the API.
 *   **JWT Authentication:** Secures API endpoints and WebSocket connections, ensuring only authenticated users can access resources or establish real-time connections.
+*   **Role-Based Authorization:** Users have a `role` of `user` (default) or `admin`. A user can update or delete only their own account; admins can manage any account and change roles through `PUT /api/v1/users/:id/role`. The first admin must be promoted directly in the database:
+    ```sql
+    UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
+    ```
 *   **Rate Limiting:** Uses `express-rate-limit` to limit the number of requests from a single IP address, mitigating brute-force and denial-of-service attacks.
 *   **Input Validation:** Uses `Joi` to validate incoming request data (body, query, params) against predefined schemas, preventing invalid or malicious data from being processed.
 *   **Environment Variables:** Sensitive information like API keys and database credentials are stored securely in environment variables, not hardcoded in the source code.
