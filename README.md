@@ -1,302 +1,291 @@
-# Real-time Chat Application
+# Switchboard
 
-An advanced real-time chat application built with Node.js, TypeScript, WebSockets, PostgreSQL, and integrated with Cloudflare R2 for media storage. This project emphasizes clean architecture and domain-driven design principles.
+[![CI](https://github.com/deniz1976/Chat-App/actions/workflows/ci.yml/badge.svg)](https://github.com/deniz1976/Chat-App/actions/workflows/ci.yml)
 
-![ChatApp](screenshots/ss.PNG)
+**[English](#english) · [Türkçe](#turkce)**
 
-## Features
+A real-time chat application designed around an old telephone switchboard: every conversation is a jack on the board, a lamp shows who is online, and the open conversation is connected by a cord in the chat's own colour.
 
-*   **Real-time Messaging:** Utilizes WebSockets (`ws` library) for instant message delivery between connected clients.
-*   **User Authentication & Authorization:** Secure user login and session management using JSON Web Tokens (JWT) stored in an httpOnly, SameSite=Strict cookie. WebSocket connections are authenticated with the same cookie.
-*   **User Avatars:** Allows users to upload and update their profile pictures, stored in Cloudflare R2.
-*   **Direct & Group Chats:** Supports both one-on-one conversations and multi-user group chats.
-*   **Image Sharing:** Allows users to share images within chats, stored in Cloudflare R2.
-*   **Message Status:** Indicates whether messages are `sent`, `delivered`, or `read` (Real-time updates via WebSockets for read receipts).
-*   **Typing Indicators:** Shows when a user is actively typing in a chat session via WebSocket updates.
-*   **Online/Offline Status:** Tracks and broadcasts user presence status (online/offline) to relevant clients in real-time.
-*   **Media Storage:** Integrated with Cloudflare R2 for scalable and efficient object storage (avatars, chat images).
-*   **API Documentation:** Provides API documentation via Swagger UI.
-*   **Robust Error Handling:** Centralized error handling mechanism.
-*   **Structured Logging:** Comprehensive logging using Winston.
-*   **Security:** Implements security best practices including Helmet for headers, CORS configuration, rate limiting, and input validation.
+![Conversation](screenshots/conversation.png)
 
-## Tech Stack
+| Night theme | Group details |
+| --- | --- |
+| ![Night theme](screenshots/night.png) | ![Group details](screenshots/group-details.png) |
 
-*   **Backend:** Node.js, Express.js (for routing and middleware), TypeScript.
-*   **Database:** PostgreSQL (a powerful open-source relational database).
-*   **ORM:** Sequelize (provides an abstraction layer for interacting with the PostgreSQL database).
-*   **Real-time Communication:** WebSockets (`ws` library for raw WebSocket implementation).
-*   **Authentication:** JSON Web Tokens (JWT) (`jsonwebtoken` library).
-*   **File Upload Handling:** Multer (`multer`) for processing multipart/form-data requests.
-*   **Media Storage & Delivery:** Cloudflare R2 (Object storage service) integrated via AWS SDK v3 (`@aws-sdk/client-s3`). Configuration includes R2 Bucket Name, Public Hostname, Access Key ID, Secret Access Key.
-*   **Validation:** Joi (for robust request data validation).
-*   **Logging:** Winston (a versatile logging library for Node.js, configured for console and file output).
-*   **Security:** Helmet (helps secure Express apps by setting various HTTP headers), CORS (enables Cross-Origin Resource Sharing), express-rate-limit (basic rate limiting to prevent abuse).
-*   **Containerization:** Docker (multi-stage `Dockerfile` and `docker-compose.yml` with PostgreSQL).
+| Sign in | Phone: board | Phone: conversation |
+| --- | --- | --- |
+| ![Sign in](screenshots/sign-in.png) | ![Board on a phone](screenshots/mobile-board.png) | ![Conversation on a phone](screenshots/mobile-conversation.png) |
 
-## Project Structure
+---
 
-The project follows a layered architecture: controllers and WebSocket handlers only translate transport concerns, services in `core` hold business rules and depend on repository interfaces from `domain`, and `infrastructure` provides the Sequelize and WebSocket implementations. Dependencies are wired in `src/container.ts`.
+<a id="english"></a>
 
-```
-src/
-├── api/                  # Transport layer: HTTP and WebSocket adapters.
-│   ├── controllers/      # Thin request handlers that delegate to services.
-│   ├── middlewares/      # Authentication, rate limiting, uploads and error handling.
-│   ├── presenters/       # Response shaping (e.g., public vs. private user fields).
-│   ├── routes/           # Endpoint definitions.
-│   ├── validators/       # Joi schemas for bodies, queries and route parameters.
-│   └── websocket/        # WebSocket server: handshake authentication and event dispatch.
-├── config/               # Configuration loaded from environment variables.
-├── core/                 # Application layer.
-│   ├── services/         # Business rules and authorization (auth, users, chats, messages, presence).
-│   ├── errors.ts         # Typed errors mapped to HTTP status codes.
-│   └── realtime.ts       # Realtime event types and the notifier port used by services.
-├── domain/               # Domain layer.
-│   ├── entities/         # User, Chat and Message models.
-│   └── repositories/     # Repository interfaces.
-├── infrastructure/       # Infrastructure layer.
-│   ├── database/         # Sequelize setup and associations.
-│   ├── realtime/         # WebSocket connection registry implementing the notifier port.
-│   └── repositories/     # Sequelize implementations of the repository interfaces.
-├── utils/                # Logger and helpers.
-├── container.ts          # Composition root wiring repositories, services and the notifier.
-└── server.ts             # Application entry point.
-web/                      # React + TypeScript frontend built with Vite (served from web/dist).
-```
+## English
 
-## Getting Started
+### Features
 
-### Prerequisites
+- **Direct and group chats.** A direct chat between two people is unique, even when both start it at the same time.
+- **Real-time messaging** over WebSockets, delivered to every open tab and device.
+- **Presence.** Online, away, typing and last seen, shared only with people you have a chat with.
+- **Read receipts.** Shown as Sent, Read or Read by N, with unread counters and a New messages divider.
+- **Message actions.** Reply with quotes, edit (marked as Edited) and delete for everyone.
+- **Attachments.** Images, audio, video, PDF, ZIP and text files, stored in Cloudflare R2.
+- **Search** inside a chat that jumps to the result, loading older history when needed.
+- **Group management.** Rename, change the photo, add and remove members, and promote admins, all synced live to every member.
+- **Profiles.** Profile photos, display names and an online/away switch.
+- **Day and night themes** that follow the system setting, and a layout that works on phones.
+- **Resilient client.** Messages are sent optimistically with retry, and the client reconnects and resynchronises automatically.
 
-*   Node.js (v20.19 or higher)
-*   npm (usually comes with Node.js)
-*   PostgreSQL Server
-*   Cloudflare Account (for R2 object storage)
-    *   Cloudflare Account ID
-    *   R2 Bucket created
-    *   R2 API Token with **Read & Write** permissions (generates Access Key ID and Secret Access Key)
-    *   (Optional but Recommended) Public Hostname configured for the R2 bucket for direct image access.
-*   Docker (Optional, for running in a container)
+### Tech stack
 
-### Installation
+| Area | Technology |
+| --- | --- |
+| Server | Node.js, Express 5, TypeScript, `ws` |
+| Database | PostgreSQL with Sequelize, migrations with Umzug |
+| Frontend | React 19, TypeScript, Vite |
+| Storage | Cloudflare R2 through the AWS S3 SDK |
+| Validation and security | Joi, Helmet, express-rate-limit, bcrypt, JWT in an httpOnly cookie |
+| Quality | Jest and Supertest against PostgreSQL, ESLint, Prettier, GitHub Actions |
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/deniz1976/Chat-App.git
-    cd Chat-App
-    ```
+### Getting started
 
-2.  **Install backend dependencies:**
-    ```bash
-    npm install
-    ```
-
-3.  **Set up Environment Variables:**
-    Create a `.env` file in the root directory (`Chat-App/.env`). Use the following structure and fill in your details:
-
-    ```dotenv
-    # Server Configuration
-    PORT=3000
-    NODE_ENV=development # or production
-    LOG_LEVEL=debug # error, warn, info, http or debug. Defaults to info in production and debug otherwise
-    CORS_ORIGINS= # Comma-separated list of additional allowed origins. Leave empty when the frontend is served by this server
-    TRUST_PROXY=false # Set to the number of reverse proxies in front of the app (e.g., 1) so rate limiting uses the client IP
-
-    # Database Configuration (PostgreSQL)
-    DB_DIALECT=postgres
-    DB_HOST=localhost
-    DB_PORT=5432
-    DB_USER=your_db_user
-    DB_PASSWORD=your_db_password
-    DB_NAME=chat_app
-    DB_SSL=false # Set to true if using SSL connection
-    DB_SSL_CA_PATH= # Optional path to the CA certificate (PEM) used to verify the database server
-    DB_SSL_REJECT_UNAUTHORIZED=true # Verify the database TLS certificate. Only set to false for trusted networks
-
-    # JWT Authentication
-    JWT_SECRET=generate_a_very_strong_random_secret_key # Required, at least 32 characters. The server refuses to start without it.
-    JWT_EXPIRES_IN=1d # e.g., 1d, 12h, 60m
-
-    # Cloudflare R2 Configuration
-    CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id
-    CLOUDFLARE_R2_BUCKET_NAME=your_r2_bucket_name
-    # Ensure this is the hostname for PUBLIC access (e.g., from Cloudflare R2 settings)
-    # Example: https://pub-yourhash.r2.dev OR your custom domain mapped to the bucket
-    CLOUDFLARE_R2_PUBLIC_HOSTNAME=your_r2_public_url_including_https
-    # Credentials from an R2 API Token with Read & Write permissions
-    CLOUDFLARE_R2_ACCESS_KEY_ID=your_r2_access_key_id
-    CLOUDFLARE_R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
-    ```
-    *   **Important:** Ensure the R2 API Token used for the Access Key ID and Secret Access Key has **Read & Write** permissions for your bucket.*
-    *   **Important:** `CLOUDFLARE_R2_PUBLIC_HOSTNAME` should be the **full URL prefix** used to access your bucket publicly (including `https://`).*
-    *   **Never commit your `.env` file to Git.**
-
-4.  **Create the database:**
-    Ensure your PostgreSQL server is running. Connect and run:
-    ```sql
-    CREATE DATABASE chat_app;
-    ```
-
-5.  **Run database migrations:**
-    ```bash
-    npm run migrate:dev
-    ```
-    The server refuses to start while migrations are pending. See [Database Migrations](#database-migrations).
-
-### Running the Application
-
-*   **Development Mode:**
-    ```bash
-    npm run dev       # API and WebSocket server on http://localhost:3000, restarts on changes under src/
-    npm run dev:web   # frontend with hot reload on http://localhost:5173, proxying /api and /ws to the server
-    ```
-    Open `http://localhost:5173` while developing the frontend. Set `API_URL` if the server runs elsewhere.
-
-*   **Production Mode:**
-    Compile the server into `dist/` and the frontend into `web/dist/`:
-    ```bash
-    npm run build
-    ```
-    Start the compiled application:
-    ```bash
-    npm start
-    ```
-
-### Accessing the Frontend
-
-After `npm run build`, the frontend is served by the backend. Open `http://localhost:3000` (or the configured port) in your browser. The frontend must be served from the same origin as the API because authentication relies on a same-origin cookie.
-
-## Frontend
-
-The frontend in `web/` is a React and TypeScript application built with Vite. Its visual language follows an old telephone switchboard: every conversation is a jack on the board, a lamp shows whether the other person is online, and the open conversation is connected to the board with a coloured cord.
-
-*   `web/src/api/`: typed client for the REST API.
-*   `web/src/realtime/`: WebSocket client that reconnects with exponential backoff.
-*   `web/src/state/`: a reducer holding chats, message threads, presence and typing indicators, and a provider that applies realtime events, marks the open chat as read, sends messages optimistically and resynchronises after a reconnect.
-*   `web/src/components/`: the board (chat list), the line (conversation, message list and composer) and the dialogs for new chats, the profile and images.
-
-Fonts are bundled from `@fontsource` packages, so the frontend makes no requests to third-party hosts.
-
-## API Documentation
-
-Available at `/api-docs` when the server is running (e.g., `http://localhost:3000/api-docs`).
-
-## WebSocket Protocol
-
-The application uses WebSockets for real-time features.
-
-### Connection
-
-*   Clients connect to the `/ws` path on the same host as the HTTP server (e.g., `ws://localhost:3000/ws`).
-*   **Authentication:** The handshake is authenticated with the `access_token` httpOnly cookie set by the login and register endpoints. Browsers send it automatically on same-origin connections.
-*   **Origin Check:** The handshake is rejected unless the `Origin` header matches the server host, preventing cross-site WebSocket hijacking.
-*   **Keep-Alive:** The server uses a ping/pong mechanism every 30 seconds to detect and terminate stale connections. Clients should respond to pings with pongs to maintain the connection.
-
-### Message Structure
-
-Messages exchanged over WebSockets generally follow this JSON structure:
-
-```json
-{
-  "type": "MESSAGE_TYPE_ENUM",
-  "payload": { ... } // Data specific to the message type
-}
-```
-
-### Events sent by the client
-
-*   `TYPING`: `{ chatId, isTyping }`. Relayed to the other participants of the chat.
-*   `READ_RECEIPT`: `{ chatId, messageId }`. Marks one message as read. To mark a whole chat as read, use `POST /api/v1/chats/:id/read`.
-
-The server resolves recipients from the chat membership stored in the database and answers invalid events with an `ERROR` event.
-
-### Events sent by the server
-
-*   `NEW_MESSAGE`: the created message, sent to every connection of every participant, including the sender's other connections.
-*   `MESSAGE_UPDATED`: `{ message, isLastMessage }`.
-*   `MESSAGE_DELETED`: `{ chatId, messageId, lastMessage? }`. `lastMessage` is present when the deleted message was the latest one.
-*   `READ_RECEIPT`: `{ chatId, readerId, messageIds, timestamp }`.
-*   `TYPING`: `{ chatId, userId, isTyping }`.
-*   `USER_STATUS`: `{ userId, status, timestamp }`, sent to users who share a chat with that user.
-*   `CHAT_CREATED`, `CHAT_UPDATED`, `CHAT_REMOVED`: `{ chatId }`. Clients fetch the chat through the API to get its current state.
-*   `ERROR`: `{ message }`.
-
-## Testing
-
-The test suite in `tests/` runs against a real PostgreSQL server. It creates (and recreates on every run) the `chat_app_test` and `chat_app_test_migrations` databases, so point it at a server where those names are free:
+#### With Docker Compose
 
 ```bash
-DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres npm test
+cp .env.example .env
+# set at least DB_PASSWORD and JWT_SECRET (32+ characters) in .env
+docker compose up --build
 ```
 
-Set `TEST_DB_NAME` to use a different database name. The suite covers authentication, authorization, chats, messages, WebSocket events and presence, uploads and migrations. It runs on every push and pull request through GitHub Actions.
+Compose starts PostgreSQL, applies the migrations and then starts the app on http://localhost:3000.
 
-## Database Migrations
+#### Local development
 
-The schema is managed with migrations in `src/infrastructure/database/migrations`, run by [Umzug](https://github.com/sequelize/umzug) and recorded in the `sequelize_meta` table. The application never alters the schema on startup.
+Requirements: Node.js 20.19 or later and PostgreSQL.
+
+```bash
+npm install
+cp .env.example .env          # fill in the database settings and JWT_SECRET
+npm run migrate:dev           # create or upgrade the schema
+npm run dev                   # API and WebSocket server on http://localhost:3000
+npm run dev:web               # frontend with hot reload on http://localhost:5173
+```
+
+For a production build, run `npm run build`, then `npm run migrate` and `npm start`. The server then also serves the frontend.
+
+To make someone an administrator, run this once in the database:
+
+```sql
+UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
+```
+
+### Configuration
+
+All settings are read from environment variables. `.env.example` lists every variable.
+
+| Variable | Description |
+| --- | --- |
+| `PORT` | HTTP port. Default: `3000` |
+| `NODE_ENV` | `development` or `production`. In production the auth cookie is marked `Secure` |
+| `LOG_LEVEL` | `error`, `warn`, `info`, `http` or `debug` |
+| `CORS_ORIGINS` | Comma-separated extra origins allowed to call the API. Leave empty when the frontend is served by this server |
+| `TRUST_PROXY` | Number of reverse proxies in front of the app, so rate limits use the client IP |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | PostgreSQL connection |
+| `DB_SSL`, `DB_SSL_CA_PATH`, `DB_SSL_REJECT_UNAUTHORIZED` | TLS for the database. The certificate is verified unless explicitly disabled |
+| `JWT_SECRET` | Required, at least 32 characters |
+| `JWT_EXPIRES_IN` | Session length, for example `1d` or `12h` |
+| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_R2_BUCKET_NAME`, `CLOUDFLARE_R2_ACCESS_KEY_ID`, `CLOUDFLARE_R2_SECRET_ACCESS_KEY` | R2 bucket and an API token with read and write access |
+| `CLOUDFLARE_R2_PUBLIC_HOSTNAME` | Public URL of the bucket, used for file links and allowed in the Content Security Policy |
+
+The app runs without R2; only uploads are unavailable.
+
+### Scripts
 
 | Command | Description |
 | --- | --- |
-| `npm run migrate:dev` | Apply pending migrations from the TypeScript sources |
-| `npm run migrate` | Apply pending migrations from the compiled `dist` build |
-| `npm run migrate:undo` | Revert the last applied migration |
-| `npm run migrate:status` | List executed and pending migrations |
+| `npm run dev` / `npm run dev:web` | Run the server and the frontend in development mode |
+| `npm run build` | Build the server into `dist/` and the frontend into `web/dist/` |
+| `npm start` | Start the built server |
+| `npm run migrate` / `migrate:dev` | Apply pending migrations (built code / TypeScript sources) |
+| `npm run migrate:undo` / `migrate:status` | Revert the last migration / list migrations |
+| `npm test` | Run the test suite against PostgreSQL |
+| `npm run lint` / `typecheck` / `format` | Lint, type-check and format |
 
-Databases created by earlier versions through `sequelize.sync` are upgraded in place: the baseline migration is skipped when the tables already exist, duplicate unique constraints accumulated by `sync({ alter: true })` are dropped, and duplicate direct chats are merged into the oldest one before the uniqueness index is created.
+### Project structure
 
-## Configuration
+```
+src/
+├── api/              HTTP controllers, routes, validators, middlewares and the WebSocket server
+├── core/             Services with the business rules, typed errors and the realtime port
+├── domain/           Sequelize models and repository interfaces
+├── infrastructure/   Repositories, migrations, R2 storage and the WebSocket connection registry
+├── container.ts      Wires repositories, services and the notifier together
+└── server.ts         Entry point
+web/src/
+├── api/              Typed REST client
+├── realtime/         Reconnecting WebSocket client
+├── state/            Reducer and provider for chats, messages, presence and typing
+└── components/       The board, the conversation and the dialogs
+tests/                Integration tests
+```
 
-Application configuration is managed via environment variables, loaded using the `dotenv` library.
+The API is documented with Swagger at `/api-docs`. The WebSocket endpoint is `/ws`. It is authenticated with the same cookie as the API and sends events for new, edited and deleted messages, read receipts, typing, presence and chat changes.
 
-*   The primary configuration file is `src/config/index.ts`, which reads `process.env` variables and provides a typed `config` object used throughout the application.
-*   A `.env` file in the project root is used to store sensitive information and environment-specific settings during development. **Do not commit the `.env` file to version control.** Use a `.env.example` file to document required variables.
+### Security
 
-## Logging
+- The session token is kept in an httpOnly, SameSite=Strict cookie that scripts cannot read.
+- Role-based authorization (user and admin), with ownership checks on every chat and message.
+- WebSocket handshakes check both the cookie and the origin.
+- Uploads are limited by type and size, and images are checked against their file signature.
+- Rate limits apply to the API, to failed logins and to registrations. Logins take the same time whether or not the email exists.
+- A strict Content Security Policy, and no sensitive data in the logs.
 
-*   Logging is implemented using the **Winston** library (`src/utils/logger.ts`).
-*   **Transports:** Logs are output to:
-    *   The console (with colors and timestamps, level based on `NODE_ENV`).
-    *   `logs/error.log`: Only errors are logged here.
-    *   `logs/combined.log`: All logs (based on the configured level) are logged here.
-*   **Levels:** Standard log levels (error, warn, info, http, debug) are used. The logging level is set to `debug` in development and `info` in production.
-*   **Format:** Console logs are formatted for readability, while file logs are stored in JSON format.
+### Testing
 
-## Error Handling
+The integration tests need a running PostgreSQL server. They create and drop the `chat_app_test` databases themselves.
 
-*   Services throw typed errors from `src/core/errors.ts` (`BadRequestError`, `ForbiddenError`, `NotFoundError`, `ConflictError`, ...), which the global handler in `src/api/middlewares/errorHandler.ts` maps to the matching status code and message.
-*   Express 5 forwards rejected promises from async route handlers to the error handler, so controllers do not need their own try/catch blocks.
-*   Unexpected errors are logged with their stack trace and answered with a generic `500` response. In **development** the response also includes the error message and stack trace.
-*   Malformed JSON bodies and invalid route parameters are answered with `400`, and unknown routes with `404`.
+```bash
+DB_HOST=localhost DB_USER=postgres DB_PASSWORD=postgres npm test
+```
 
-## Security
+### License
 
-Several security measures are implemented:
+ISC
 
-*   **Helmet:** Sets various HTTP headers to protect against common web vulnerabilities (e.g., XSS, clickjacking).
-*   **CORS:** Disabled by default because the frontend is served from the same origin. Additional origins can be allowed through `CORS_ORIGINS`, which also applies to WebSocket handshakes.
-*   **JWT Authentication:** The token is delivered in an httpOnly, SameSite=Strict cookie (`Secure` in production), so it is not readable from JavaScript and is not sent on cross-site requests. It secures both API endpoints and WebSocket connections.
-*   **Role-Based Authorization:** Users have a `role` of `user` (default) or `admin`. A user can update or delete only their own account; admins can manage any account and change roles through `PUT /api/v1/users/:id/role`. The first admin must be promoted directly in the database:
-    ```sql
-    UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
-    ```
-*   **Rate Limiting:** Uses `express-rate-limit` per client IP: API requests are limited to 1000 per 15 minutes, failed logins to 10 per 15 minutes and registrations to 5 per hour. Static files are not rate limited. Set `TRUST_PROXY` when running behind a reverse proxy.
-*   **Input Validation:** Uses `Joi` to validate incoming request data (body, query, params) against predefined schemas, preventing invalid or malicious data from being processed.
-*   **Environment Variables:** Sensitive information like API keys and database credentials are stored securely in environment variables, not hardcoded in the source code.
+---
 
-## Docker Support
+<a id="turkce"></a>
 
-*   `Dockerfile` builds a multi-stage image: the TypeScript sources are compiled in a build stage and the runtime image contains only production dependencies, `dist/` and the built frontend in `web/dist/`. The container runs as the unprivileged `node` user and exposes a health check on `/health`.
-*   `docker-compose.yml` starts PostgreSQL, runs the migrations once through the `migrate` service and starts the application after they succeed:
-    ```bash
-    cp .env.example .env   # or create .env with at least DB_PASSWORD and JWT_SECRET
-    docker compose up --build
-    ```
-    The application is then available on `http://localhost:3000`. Compose sets the database connection itself, so `.env` only needs `DB_PASSWORD`, `JWT_SECRET` and optional settings such as the R2 credentials.
-*   The image runs with `NODE_ENV=production`, so the auth cookie is marked `Secure`. Browsers accept it on `http://localhost`, but any other host must be served over HTTPS.
-*   To run the image on its own, apply the migrations first and then start the server:
-    ```bash
-    docker build -t chat-app .
-    docker run --rm --env-file .env chat-app node dist/infrastructure/database/migrate.js up
-    docker run -p 3000:3000 --env-file .env chat-app
-    ```
+## Türkçe
+
+Switchboard, eski bir telefon santralinden esinlenen gerçek zamanlı bir sohbet uygulaması. Her sohbet panelde bir jak; lambalar kimin çevrimiçi olduğunu gösteriyor, açık sohbet de o sohbete özgü renkteki bir kabloyla bağlanıyor.
+
+### Özellikler
+
+- **Birebir ve grup sohbetleri.** İki kişi arasındaki birebir sohbet tektir; iki taraf aynı anda başlatsa bile ikinci bir sohbet oluşmaz.
+- **WebSocket ile anlık mesajlaşma.** Mesajlar açık olan her sekmeye ve cihaza iletilir.
+- **Çevrimiçi durumu.** Çevrimiçi, uzakta, yazıyor ve son görülme bilgileri yalnızca ortak sohbeti olan kişilerle paylaşılır.
+- **Okundu bilgisi.** Mesajlarda Sent, Read ya da Read by N görünür; okunmamış sayacı ve "New messages" ayırıcısı vardır.
+- **Mesaj işlemleri.** Alıntılı yanıt, düzenleme ("Edited" etiketiyle) ve herkesten silme.
+- **Dosya ekleri.** Resim, ses, video, PDF, ZIP ve metin dosyaları Cloudflare R2'de saklanır.
+- **Sohbet içinde arama.** Sonuca tıklayınca ilgili mesaja gidilir; mesaj henüz yüklenmemişse eski geçmiş otomatik olarak yüklenir.
+- **Grup yönetimi.** Yeniden adlandırma, grup fotoğrafı, üye ekleme ve çıkarma, admin yapma. Değişiklikler tüm üyelere anında yansır.
+- **Profil.** Profil fotoğrafı, görünen ad ve çevrimiçi/uzakta anahtarı.
+- **Gündüz ve gece teması.** Sistem ayarını takip eder; arayüz telefonda da çalışır.
+- **Dayanıklı istemci.** Mesajlar iyimser olarak gönderilir ve başarısız olursa tekrar denenebilir. Bağlantı koparsa istemci kendiliğinden yeniden bağlanır ve aradaki mesajları getirir.
+
+### Teknolojiler
+
+| Alan | Teknoloji |
+| --- | --- |
+| Sunucu | Node.js, Express 5, TypeScript, `ws` |
+| Veritabanı | PostgreSQL, Sequelize, Umzug ile migration'lar |
+| Arayüz | React 19, TypeScript, Vite |
+| Depolama | AWS S3 SDK üzerinden Cloudflare R2 |
+| Doğrulama ve güvenlik | Joi, Helmet, express-rate-limit, bcrypt, httpOnly cookie'de JWT |
+| Kalite | PostgreSQL'e karşı Jest ve Supertest, ESLint, Prettier, GitHub Actions |
+
+### Kurulum
+
+#### Docker Compose ile
+
+```bash
+cp .env.example .env
+# .env içinde en az DB_PASSWORD ve JWT_SECRET (en az 32 karakter) değerlerini ayarlayın
+docker compose up --build
+```
+
+Compose önce PostgreSQL'i başlatır, migration'ları uygular ve ardından uygulamayı http://localhost:3000 adresinde çalıştırır.
+
+#### Yerel geliştirme
+
+Gereksinimler: Node.js 20.19 veya üstü ve PostgreSQL.
+
+```bash
+npm install
+cp .env.example .env          # veritabanı ayarlarını ve JWT_SECRET'ı doldurun
+npm run migrate:dev           # şemayı oluşturur veya günceller
+npm run dev                   # API ve WebSocket sunucusu: http://localhost:3000
+npm run dev:web               # otomatik yenilenen arayüz: http://localhost:5173
+```
+
+Production için `npm run build`, ardından `npm run migrate` ve `npm start` çalıştırın. Bu modda arayüzü de sunucu sunar.
+
+Bir kullanıcıyı admin yapmak için veritabanında bir kez şunu çalıştırın:
+
+```sql
+UPDATE users SET role = 'admin' WHERE email = 'siz@ornek.com';
+```
+
+### Yapılandırma
+
+Tüm ayarlar ortam değişkenlerinden okunur. Değişkenlerin tamamı `.env.example` dosyasında listelenmiştir.
+
+| Değişken | Açıklama |
+| --- | --- |
+| `PORT` | HTTP portu. Varsayılan: `3000` |
+| `NODE_ENV` | `development` ya da `production`. Production'da oturum cookie'si `Secure` olarak işaretlenir |
+| `LOG_LEVEL` | `error`, `warn`, `info`, `http` ya da `debug` |
+| `CORS_ORIGINS` | API'ye erişebilecek ek origin'ler, virgülle ayrılır. Arayüz bu sunucudan sunuluyorsa boş bırakın |
+| `TRUST_PROXY` | Uygulamanın önündeki reverse proxy sayısı; rate limit'in gerçek istemci IP'sini kullanması için gerekir |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | PostgreSQL bağlantısı |
+| `DB_SSL`, `DB_SSL_CA_PATH`, `DB_SSL_REJECT_UNAUTHORIZED` | Veritabanı için TLS. Açıkça kapatılmadıkça sertifika doğrulanır |
+| `JWT_SECRET` | Zorunlu, en az 32 karakter |
+| `JWT_EXPIRES_IN` | Oturum süresi, örneğin `1d` ya da `12h` |
+| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_R2_BUCKET_NAME`, `CLOUDFLARE_R2_ACCESS_KEY_ID`, `CLOUDFLARE_R2_SECRET_ACCESS_KEY` | R2 bucket'ı ve okuma/yazma yetkili API anahtarı |
+| `CLOUDFLARE_R2_PUBLIC_HOSTNAME` | Bucket'ın herkese açık adresi. Dosya bağlantılarında kullanılır ve içerik güvenlik politikasında (CSP) izinlidir |
+
+Uygulama R2 olmadan da çalışır; bu durumda sadece dosya yükleme devre dışı kalır.
+
+### Komutlar
+
+| Komut | Açıklama |
+| --- | --- |
+| `npm run dev` / `npm run dev:web` | Sunucuyu ve arayüzü geliştirme modunda çalıştırır |
+| `npm run build` | Sunucuyu `dist/`, arayüzü `web/dist/` klasörüne derler |
+| `npm start` | Derlenmiş sunucuyu başlatır |
+| `npm run migrate` / `migrate:dev` | Bekleyen migration'ları uygular (derlenmiş koddan / TypeScript kaynaklarından) |
+| `npm run migrate:undo` / `migrate:status` | Son migration'ı geri alır / migration'ları listeler |
+| `npm test` | Testleri PostgreSQL'e karşı çalıştırır |
+| `npm run lint` / `typecheck` / `format` | Lint, tip kontrolü ve biçimlendirme |
+
+### Proje yapısı
+
+```
+src/
+├── api/              HTTP controller'ları, route'lar, doğrulayıcılar, middleware'ler ve WebSocket sunucusu
+├── core/             İş kurallarını içeren servisler, tipli hatalar ve realtime arayüzü
+├── domain/           Sequelize modelleri ve repository arayüzleri
+├── infrastructure/   Repository'ler, migration'lar, R2 depolama ve WebSocket bağlantı kaydı
+├── container.ts      Repository'leri, servisleri ve bildirim katmanını birbirine bağlar
+└── server.ts         Giriş noktası
+web/src/
+├── api/              Tipli REST istemcisi
+├── realtime/         Otomatik yeniden bağlanan WebSocket istemcisi
+├── state/            Sohbetler, mesajlar, çevrimiçi durumu ve "yazıyor" bilgisi için reducer ve provider
+└── components/       Pano, sohbet ekranı ve pencereler
+tests/                Entegrasyon testleri
+```
+
+API dokümantasyonu `/api-docs` adresinde Swagger ile sunulur. WebSocket uç noktası `/ws`'dir. API ile aynı cookie üzerinden kimlik doğrular; yeni, düzenlenen ve silinen mesajlar, okundu bilgisi, yazıyor bilgisi, çevrimiçi durumu ve sohbet değişiklikleri için olay gönderir.
+
+### Güvenlik
+
+- Oturum token'ı, JavaScript'in okuyamadığı httpOnly ve SameSite=Strict bir cookie'de tutulur.
+- Rol tabanlı yetkilendirme (user ve admin) vardır; her sohbet ve mesaj işleminde sahiplik kontrol edilir.
+- WebSocket bağlantısı hem cookie hem de origin doğrulamasından geçer.
+- Dosya yüklemeleri tür ve boyutla sınırlıdır; resimler dosya imzasına göre doğrulanır.
+- API'ye, başarısız giriş denemelerine ve kayıtlara rate limit uygulanır. Login yanıtı, e-posta kayıtlı olsun ya da olmasın aynı sürede döner.
+- Sıkı bir içerik güvenlik politikası (CSP) uygulanır ve loglarda hassas veri tutulmaz.
+
+### Testler
+
+Entegrasyon testleri çalışan bir PostgreSQL sunucusu ister. `chat_app_test` veritabanlarını testler kendileri oluşturup siler.
+
+```bash
+DB_HOST=localhost DB_USER=postgres DB_PASSWORD=postgres npm test
+```
+
+### Lisans
+
+ISC
