@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { Sequelize, Dialect } from 'sequelize';
+import { Dialect } from 'sequelize';
 
 dotenv.config();
 
@@ -60,8 +60,6 @@ export interface Config {
   };
   cloudflare: {
     accountId: string;
-    apiToken: string;
-    imagesApiToken: string;
     r2BucketName: string;
     r2PublicBaseUrl: string;
     r2AccessKeyId: string;
@@ -89,8 +87,6 @@ export const config: Config = {
   },
   cloudflare: {
     accountId: process.env.CLOUDFLARE_ACCOUNT_ID || '',
-    apiToken: process.env.CLOUDFLARE_API_TOKEN || '',
-    imagesApiToken: process.env.CLOUDFLARE_IMAGES_TOKEN || '',
     r2BucketName: process.env.CLOUDFLARE_R2_BUCKET_NAME || '',
     r2PublicBaseUrl: toHttpsBaseUrl(process.env.CLOUDFLARE_R2_PUBLIC_HOSTNAME),
     r2AccessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || '',

@@ -3,8 +3,6 @@ import { logger } from '../../utils/logger';
 import { config } from '../../config';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { randomUUID } from 'crypto';
-import FormData from 'form-data';
-import axios from 'axios';
 
 const s3Client = new S3Client({
     region: 'auto',
@@ -14,46 +12,6 @@ const s3Client = new S3Client({
         secretAccessKey: config.cloudflare.r2SecretAccessKey,
     }
 });
-
-const uploadToCloudflareImages = async (fileBuffer: Buffer, filename: string, mimetype: string): Promise<string | null> => {
-    const accountId = config.cloudflare.accountId;
-    const apiToken = config.cloudflare.imagesApiToken;
-
-    if (!accountId || !apiToken) {
-        logger.error('Cloudflare Images account ID or API token is missing in config');
-        return null;
-    }
-
-    const formData = new FormData();
-    formData.append('file', fileBuffer, { filename: filename, contentType: mimetype });
-
-    try {
-        const response = await axios.post(`https://api.cloudflare.com/client/v4/accounts/${accountId}/images/v1`, formData, {
-            headers: {
-                ...formData.getHeaders(),
-                'Authorization': `Bearer ${apiToken}`,
-            }
-        });
-
-        const result = response.data;
-        if (result.success && result.result.variants && result.result.variants.length > 0) {
-            return result.result.variants[0];
-        }
-        logger.error('Cloudflare Images upload response missing success or variants', { result });
-        return null;
-    } catch (error: any) {
-        if (axios.isAxiosError(error)) {
-            logger.error('Axios error uploading to Cloudflare Images', {
-                status: error.response?.status,
-                data: error.response?.data,
-                message: error.message
-            });
-        } else {
-            logger.error('Error uploading to Cloudflare Images', { error: error.message });
-        }
-        return null;
-    }
-};
 
 const uploadToR2 = async (fileBuffer: Buffer, mimetype: string, fileKey: string): Promise<string | null> => {
     const bucketName = config.cloudflare.r2BucketName;

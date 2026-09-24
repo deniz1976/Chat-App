@@ -114,7 +114,6 @@ public/                   # Static frontend files (HTML, CSS, JavaScript).
 
     # Cloudflare R2 Configuration
     CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id
-    # CLOUDFLARE_API_TOKEN= # This general token might not be needed if using R2 specific keys
     CLOUDFLARE_R2_BUCKET_NAME=your_r2_bucket_name
     # Ensure this is the hostname for PUBLIC access (e.g., from Cloudflare R2 settings)
     # Example: https://pub-yourhash.r2.dev OR your custom domain mapped to the bucket
