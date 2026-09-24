@@ -15,13 +15,14 @@ export interface ChatAttributes {
   lastMessageId: string | null;
   createdBy: string;
   participants: string[];
+  directKey: string | null;
   admins: string[];
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;
 }
 
-export interface ChatCreationAttributes extends Optional<ChatAttributes, 'id' | 'name' | 'avatar' | 'lastMessageId' | 'admins' | 'createdAt' | 'updatedAt' | 'deletedAt'> {}
+export interface ChatCreationAttributes extends Optional<ChatAttributes, 'id' | 'name' | 'avatar' | 'lastMessageId' | 'admins' | 'directKey' | 'createdAt' | 'updatedAt' | 'deletedAt'> {}
 
 export class Chat extends Model<ChatAttributes, ChatCreationAttributes> implements ChatAttributes {
   public id!: string;
@@ -31,6 +32,7 @@ export class Chat extends Model<ChatAttributes, ChatCreationAttributes> implemen
   public lastMessageId!: string | null;
   public createdBy!: string;
   public participants!: string[];
+  public directKey!: string | null;
   public admins!: string[];
   public createdAt!: Date;
   public updatedAt!: Date;
@@ -40,6 +42,10 @@ export class Chat extends Model<ChatAttributes, ChatCreationAttributes> implemen
   public creator?: User;
   public messages?: Message[];
   public users?: User[];
+
+  public static buildDirectKey(userIdA: string, userIdB: string): string {
+    return [userIdA, userIdB].sort().join(':');
+  }
 
   public static initialize(sequelize: Sequelize): void {
     Chat.init(
@@ -85,6 +91,10 @@ export class Chat extends Model<ChatAttributes, ChatCreationAttributes> implemen
           type: DataTypes.ARRAY(DataTypes.UUID),
           defaultValue: [],
         },
+        directKey: {
+          type: DataTypes.STRING,
+          allowNull: true,
+        },
         createdAt: {
           type: DataTypes.DATE,
           defaultValue: DataTypes.NOW,
@@ -102,6 +112,14 @@ export class Chat extends Model<ChatAttributes, ChatCreationAttributes> implemen
         tableName: 'chats',
         sequelize,
         paranoid: true,
+        indexes: [
+          {
+            name: 'chats_direct_key_unique',
+            unique: true,
+            fields: ['direct_key'],
+            where: { deleted_at: null },
+          },
+        ],
       }
     );
   }

@@ -3,7 +3,7 @@ import { Chat, ChatType, ChatCreationAttributes } from '../../domain/entities/Ch
 import { User } from '../../domain/entities/User';
 import { Message } from '../../domain/entities/Message';
 import { logger } from '../../utils/logger';
-import { Op } from 'sequelize';
+import { Op, UniqueConstraintError } from 'sequelize';
 
 /**
  * @swagger
@@ -238,26 +238,31 @@ export const createChat = async (req: Request, res: Response): Promise<void> => 
       return;
     }
     
+    let directKey: string | null = null;
+
     if (type === ChatType.DIRECT) {
       const otherUserId = participants[0];
-      
-      const existingChat = await Chat.findOne({
-        where: {
-          type: ChatType.DIRECT,
-          participants: {
-            [Op.contains]: [userId, otherUserId],
-            [Op.eq]: [userId, otherUserId]  
-          }
-        }
-      });
-      
+
+      if (otherUserId === userId) {
+        res.status(400).json({ message: 'You cannot start a direct chat with yourself' });
+        return;
+      }
+
+      directKey = Chat.buildDirectKey(userId, otherUserId);
+      const existingChat = await Chat.findOne({ where: { directKey } });
       if (existingChat) {
         res.status(200).json(existingChat);
         return;
       }
     }
-    
-    const allParticipants = [...new Set([userId, ...participants])]; 
+
+    const allParticipants: string[] = [...new Set<string>([userId, ...participants])];
+
+    const existingUserCount = await User.count({ where: { id: allParticipants } });
+    if (existingUserCount !== allParticipants.length) {
+      res.status(404).json({ message: 'One or more participants do not exist' });
+      return;
+    }
     
     const chatData: ChatCreationAttributes = {
       name: type === ChatType.DIRECT ? null : name,
@@ -266,11 +271,22 @@ export const createChat = async (req: Request, res: Response): Promise<void> => 
       createdBy: userId,
       participants: allParticipants,
       admins: [userId],
+      directKey,
     };
-    
-    const chat = await Chat.create(chatData);
-    
-    res.status(201).json(chat);
+
+    try {
+      const chat = await Chat.create(chatData);
+      res.status(201).json(chat);
+    } catch (error) {
+      if (directKey && error instanceof UniqueConstraintError) {
+        const existingChat = await Chat.findOne({ where: { directKey } });
+        if (existingChat) {
+          res.status(200).json(existingChat);
+          return;
+        }
+      }
+      throw error;
+    }
   } catch (error: any) {
     logger.error('Error creating chat', { error, userId: req.user!.id });
     res.status(500).json({ message: 'Failed to create chat' });
