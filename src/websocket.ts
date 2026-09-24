@@ -5,6 +5,7 @@ import joi from 'joi';
 import { logger } from './utils/logger';
 import { Chat } from './domain/entities/Chat';
 import { Message } from './domain/entities/Message';
+import { ConnectionRegistry } from './infrastructure/realtime/ConnectionRegistry';
 import { AuthenticatedUser, getTokenFromCookieHeader, resolveUserFromToken } from './api/middlewares/auth';
 
 export enum WebSocketMessageType {
@@ -27,9 +28,7 @@ interface AuthenticatedWebSocket extends WebSocket {
     isAlive?: boolean; 
 }
 
-const clients = new Map<string, AuthenticatedWebSocket>();
-
-const userStatuses = new Map<string, 'online' | 'away' | 'offline'>();
+const connections = new ConnectionRegistry();
 
 const typingPayloadSchema = joi.object({
     chatId: joi.string().uuid().required(),
@@ -125,10 +124,6 @@ export const initializeWebSocket = (server: http.Server) => {
     const interval = setInterval(() => {
         wss.clients.forEach((ws: AuthenticatedWebSocket) => {
             if (ws.isAlive === false) {
-                if (ws.userId) {
-                    clients.delete(ws.userId);
-                    updateUserStatus(ws.userId, 'offline');
-                }
                 return ws.terminate();
             }
             
@@ -149,8 +144,7 @@ export const initializeWebSocket = (server: http.Server) => {
 
         ws.userId = userData.id;
         ws.username = userData.username;
-        clients.set(userData.id, ws);
-        updateUserStatus(userData.id, 'online');
+        connections.add(userData.id, ws);
         logger.info(`WebSocket client connected: ${userData.username} (ID: ${userData.id})`);
 
         ws.on('message', async (message: Buffer) => {
@@ -185,21 +179,16 @@ export const initializeWebSocket = (server: http.Server) => {
         });
 
         ws.on('close', (code, reason) => {
-            if (ws.userId) {
-                clients.delete(ws.userId);
-                updateUserStatus(ws.userId, 'offline');
-                logger.info(`WebSocket client disconnected: ${ws.username} (ID: ${ws.userId}), Code: ${code}, Reason: ${reason.toString()}`);
-                
-                broadcastUserStatus(ws.userId, 'offline');
+            const wasLastConnection = connections.remove(userData.id, ws);
+            logger.info(`WebSocket client disconnected: ${userData.username} (ID: ${userData.id}), Code: ${code}, Reason: ${reason.toString()}`);
+
+            if (wasLastConnection) {
+                broadcastUserStatus(userData.id, 'offline');
             }
         });
 
         ws.on('error', (error) => {
-            logger.error(`WebSocket error for user ${ws.userId || 'unknown'}:`, { error });
-            if (ws.userId) {
-                clients.delete(ws.userId);
-                updateUserStatus(ws.userId, 'offline');
-            }
+            logger.error(`WebSocket error for user ${userData.id}:`, { error });
         });
     });
 
@@ -248,10 +237,6 @@ async function handleReadReceipt(payload: unknown, readerId: string) {
     });
 }
 
-function updateUserStatus(userId: string, status: 'online' | 'away' | 'offline') {
-    userStatuses.set(userId, status);
-}
-
 function broadcastUserStatus(userId: string, status: 'online' | 'away' | 'offline') {
 
     const message = {
@@ -263,58 +248,16 @@ function broadcastUserStatus(userId: string, status: 'online' | 'away' | 'offlin
         }
     };
     
-    const allUserIds = Array.from(clients.keys());
-    broadcastMessageToUsers(allUserIds, message, userId);
+    broadcastMessageToUsers(connections.connectedUserIds(), message, userId);
 }
 
-export const sendNewMessageNotification = (messageData: any) => {
-    const { chatId, participantIds, excludeSenderId } = messageData;
-    
-    if (!participantIds || !Array.isArray(participantIds)) {
-        logger.warn('Cannot send message notification: participantIds missing or invalid');
-        return;
-    }
-    
-    const message = {
-        type: WebSocketMessageType.NEW_MESSAGE,
-        payload: messageData
-    };
-    
-    broadcastMessageToUsers(participantIds, message, excludeSenderId);
-};
-
-export const sendMessageToUser = (userId: string, message: object) => {
-    const client = clients.get(userId);
-    if (client && client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(message));
-        logger.info(`Sent message to user ${userId}`);
-        return true;
-    } else {
-        logger.warn(`Attempted to send message to disconnected or non-existent user ${userId}`);
-        return false;
-    }
-};
-
-export const broadcastMessageToUsers = (userIds: string[], message: object, excludeSenderId?: string) => {
+export const broadcastMessageToUsers = (userIds: string[], message: object, excludeUserId?: string) => {
+    const payload = JSON.stringify(message);
     let sentCount = 0;
-    userIds.forEach(userId => {
-        if (userId === excludeSenderId) return; 
-        const client = clients.get(userId);
-        if (client && client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(message));
-            sentCount++;
+    new Set(userIds).forEach(userId => {
+        if (userId !== excludeUserId) {
+            sentCount += connections.sendToUser(userId, payload);
         }
     });
-    if (userIds.length > (excludeSenderId ? 1 : 0)) { 
-        logger.info(`Broadcast message to ${sentCount}/${userIds.length - (excludeSenderId ? 1 : 0)} connected users`);
-    }
-}; 
-
-export const getUserStatus = (userId: string): 'online' | 'away' | 'offline' => {
-    return userStatuses.get(userId) || 'offline';
+    logger.debug(`Broadcast ${(message as WebSocketMessage).type} to ${sentCount} connections`);
 };
-
-export const isUserConnected = (userId: string): boolean => {
-    const client = clients.get(userId);
-    return !!(client && client.readyState === WebSocket.OPEN);
-}; 
