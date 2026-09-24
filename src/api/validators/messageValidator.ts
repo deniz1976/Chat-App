@@ -13,13 +13,13 @@ const messageCreationSchema = joi.object({
   type: joi.string().valid(...Object.values(MessageType)).default(MessageType.TEXT).messages({
     'string.valid': 'Please enter a valid message type',
   }),
-  mediaUrl: joi.string().uri().allow(null, '').optional(),
+  mediaUrl: joi.string().uri({ scheme: ['https'] }).allow(null, '').optional(),
   replyToId: joi.string().uuid().allow(null, '').optional(),
 });
 
 const messageUpdateSchema = joi.object({
   content: joi.string().optional(),
-  mediaUrl: joi.string().uri().allow(null, '').optional(),
+  mediaUrl: joi.string().uri({ scheme: ['https'] }).allow(null, '').optional(),
 });
 
 export const validateMessageCreation = (req: Request, res: Response, next: NextFunction): void => {

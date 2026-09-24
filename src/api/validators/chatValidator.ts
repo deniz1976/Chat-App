@@ -20,7 +20,7 @@ const chatCreationSchema = joi.object({
     'array.min': 'At least one participant is required',
     'any.required': 'Participants are required'
   }),
-  avatar: joi.string().uri().allow(null, '').optional()
+  avatar: joi.string().uri({ scheme: ['https'] }).allow(null, '').optional()
 });
 
 const chatUpdateSchema = joi.object({
@@ -28,7 +28,7 @@ const chatUpdateSchema = joi.object({
     'string.min': 'Chat name must be at least 3 characters',
     'string.max': 'Chat name cannot exceed 50 characters'
   }),
-  avatar: joi.string().uri().allow(null, '').optional()
+  avatar: joi.string().uri({ scheme: ['https'] }).allow(null, '').optional()
 });
 
 const participantSchema = joi.object({

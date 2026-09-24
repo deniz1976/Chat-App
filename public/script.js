@@ -233,7 +233,9 @@ async function fetchMessages(chatId) {
         }
     } catch (error) {
         console.error(`Error fetching messages for chat ${chatId}:`, error);
-        messagesDiv.innerHTML = `<p>Error loading messages: ${error.message}</p>`;
+        const errorEl = document.createElement('p');
+        errorEl.textContent = `Error loading messages: ${error.message}`;
+        messagesDiv.replaceChildren(errorEl);
     }
 }
 
@@ -1378,10 +1380,11 @@ function displaySearchResults(users) {
         userDiv.className = 'user-result';
         userDiv.dataset.userId = user.id;
         
-        userDiv.innerHTML = `
-            <strong>@${user.username}</strong>
-            <div>${user.displayName || ''}</div>
-        `;
+        const usernameEl = document.createElement('strong');
+        usernameEl.textContent = `@${user.username}`;
+        const displayNameEl = document.createElement('div');
+        displayNameEl.textContent = user.displayName || '';
+        userDiv.append(usernameEl, displayNameEl);
         
         userDiv.addEventListener('click', () => {
             document.querySelectorAll('.user-result').forEach(el => {
