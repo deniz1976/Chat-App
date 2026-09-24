@@ -10,6 +10,7 @@ import { logger } from '../../utils/logger';
 import { AuthenticatedUser, getTokenFromCookieHeader, resolveUserFromToken } from '../middlewares/auth';
 
 const HEARTBEAT_INTERVAL_MS = 30000;
+export const WEBSOCKET_PATH = '/ws';
 
 interface ClientMessage {
   type: string;
@@ -153,6 +154,11 @@ export const initializeWebSocket = (server: http.Server): WebSocketServer => {
   const wss = new WebSocketServer({ noServer: true });
 
   server.on('upgrade', async (req: http.IncomingMessage, socket: Duplex, head: Buffer) => {
+    if (new URL(req.url ?? '/', 'http://localhost').pathname !== WEBSOCKET_PATH) {
+      rejectUpgrade(socket, 404, 'Not Found');
+      return;
+    }
+
     if (!isAllowedOrigin(req)) {
       logger.warn('WebSocket upgrade rejected: origin mismatch', { origin: req.headers.origin });
       rejectUpgrade(socket, 403, 'Forbidden');

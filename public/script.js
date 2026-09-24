@@ -61,7 +61,7 @@ let searchTimeout = null;
 let isLightboxOpen = false;
 
 const API_BASE_URL = '/api/v1';
-const WS_BASE_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}`;
+const WS_BASE_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
 
 function showLoginForm() {
     loginContainer.classList.remove('hidden');

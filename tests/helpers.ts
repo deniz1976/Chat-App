@@ -98,7 +98,7 @@ export const startServer = async (): Promise<TestServer> => {
   await new Promise<void>((resolve) => server.listen(0, resolve));
   const { port } = server.address() as AddressInfo;
   return {
-    url: `ws://localhost:${port}`,
+    url: `ws://localhost:${port}/ws`,
     origin: `http://localhost:${port}`,
     close: () =>
       new Promise<void>((resolve) => {

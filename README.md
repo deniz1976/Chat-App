@@ -187,7 +187,7 @@ The application uses WebSockets for real-time features.
 
 ### Connection
 
-*   Clients connect to the WebSocket server on the same host as the HTTP server (e.g., `ws://localhost:3000`).
+*   Clients connect to the `/ws` path on the same host as the HTTP server (e.g., `ws://localhost:3000/ws`).
 *   **Authentication:** The handshake is authenticated with the `access_token` httpOnly cookie set by the login and register endpoints. Browsers send it automatically on same-origin connections.
 *   **Origin Check:** The handshake is rejected unless the `Origin` header matches the server host, preventing cross-site WebSocket hijacking.
 *   **Keep-Alive:** The server uses a ping/pong mechanism every 30 seconds to detect and terminate stale connections. Clients should respond to pings with pongs to maintain the connection.

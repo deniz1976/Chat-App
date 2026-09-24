@@ -66,6 +66,11 @@ describe('WebSocket', () => {
       expect(await connect(server, { Origin: server.origin, Cookie: 'access_token=invalid' })).toBe(401);
     });
 
+    it('accepts upgrades only on the WebSocket path', async () => {
+      const wrongPath = { ...server, url: server.url.replace(/\/ws$/, '/other') };
+      expect(await connect(wrongPath, { Cookie: alice.cookie, Origin: server.origin })).toBe(404);
+    });
+
     it('rejects cross-origin and origin-less handshakes', async () => {
       expect(await connect(server, { Cookie: alice.cookie, Origin: 'https://evil.example.com' })).toBe(403);
       expect(await connect(server, { Cookie: alice.cookie })).toBe(403);
