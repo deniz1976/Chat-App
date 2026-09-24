@@ -3,11 +3,12 @@ import { login, register, refreshToken, logout } from '../controllers/authContro
 import { validateLogin, validateRegistration } from '../validators/authValidator';
 import { authenticate } from '../middlewares/auth';
 import { catchErrors } from '../middlewares/errorHandler';
+import { loginRateLimiter, registrationRateLimiter } from '../middlewares/rateLimiter';
 
 const router = express.Router();
 
-router.post('/register', validateRegistration, catchErrors(register));
-router.post('/login', validateLogin, catchErrors(login));
+router.post('/register', registrationRateLimiter, validateRegistration, catchErrors(register));
+router.post('/login', loginRateLimiter, validateLogin, catchErrors(login));
 router.post('/refresh-token', authenticate, catchErrors(refreshToken));
 router.post('/logout', catchErrors(logout));
 

@@ -6,12 +6,14 @@ import userRoutes from './userRoutes';
 import chatRoutes from './chatRoutes';
 import messageRoutes from './messageRoutes';
 import uploadRoutes from './uploadRoutes';
+import { apiRateLimiter } from '../middlewares/rateLimiter';
 
 export const setupApiRoutes = (app: Express): void => {
   const API_PREFIX = '/api/v1';
 
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
   
+  app.use(API_PREFIX, apiRateLimiter);
   app.use(`${API_PREFIX}/auth`, authRoutes);
   app.use(`${API_PREFIX}/users`, userRoutes);
   app.use(`${API_PREFIX}/chats`, chatRoutes);

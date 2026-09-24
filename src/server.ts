@@ -10,9 +10,9 @@ import { logger } from './utils/logger';
 import { initializeWebSocket } from './websocket';
 import { resetAllUserStatuses } from './infrastructure/realtime/presence';
 import { setupApiRoutes } from './api/routes';
-import rateLimit from 'express-rate-limit';
 
 const app = express();
+app.set('trust proxy', config.trustProxy);
 let server: http.Server;
 
 setupDatabase()
@@ -24,14 +24,6 @@ setupDatabase()
     app.use(helmet());
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
-
-    const limiter = rateLimit({
-      windowMs: 15 * 60 * 1000, 
-      max: 100, 
-      standardHeaders: true, 
-      legacyHeaders: false, 
-    });
-    app.use(limiter); 
 
     app.use(express.static(path.join(__dirname, '..', 'public')));
 

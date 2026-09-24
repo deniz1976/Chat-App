@@ -11,6 +11,17 @@ const requireEnv = (name: string): string => {
   return value;
 };
 
+const parseTrustProxy = (value?: string): boolean | number | string => {
+  if (!value || value === 'false') {
+    return false;
+  }
+  if (value === 'true') {
+    return true;
+  }
+  const hops = Number(value);
+  return Number.isInteger(hops) ? hops : value;
+};
+
 const MIN_JWT_SECRET_LENGTH = 32;
 
 const loadJwtSecret = (): string => {
@@ -24,6 +35,7 @@ const loadJwtSecret = (): string => {
 export interface Config {
   port: number;
   nodeEnv: string;
+  trustProxy: boolean | number | string;
   db: {
     dialect: Dialect;
     host: string;
@@ -51,6 +63,7 @@ export interface Config {
 export const config: Config = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
   db: {
     dialect: (process.env.DB_DIALECT as Dialect) || 'postgres',
     host: process.env.DB_HOST || 'localhost',

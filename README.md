@@ -96,6 +96,7 @@ public/                   # Static frontend files (HTML, CSS, JavaScript).
     # Server Configuration
     PORT=3000
     NODE_ENV=development # or production
+    TRUST_PROXY=false # Set to the number of reverse proxies in front of the app (e.g., 1) so rate limiting uses the client IP
 
     # Database Configuration (PostgreSQL)
     DB_DIALECT=postgres
@@ -246,7 +247,7 @@ Several security measures are implemented:
     ```sql
     UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
     ```
-*   **Rate Limiting:** Uses `express-rate-limit` to limit the number of requests from a single IP address, mitigating brute-force and denial-of-service attacks.
+*   **Rate Limiting:** Uses `express-rate-limit` per client IP: API requests are limited to 1000 per 15 minutes, failed logins to 10 per 15 minutes and registrations to 5 per hour. Static files are not rate limited. Set `TRUST_PROXY` when running behind a reverse proxy.
 *   **Input Validation:** Uses `Joi` to validate incoming request data (body, query, params) against predefined schemas, preventing invalid or malicious data from being processed.
 *   **Environment Variables:** Sensitive information like API keys and database credentials are stored securely in environment variables, not hardcoded in the source code.
 
