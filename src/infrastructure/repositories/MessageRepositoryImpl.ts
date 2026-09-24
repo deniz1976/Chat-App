@@ -4,7 +4,10 @@ import { User } from '../../domain/entities/User';
 import { MessageRepository } from '../../domain/repositories/MessageRepository';
 import { escapeLikePattern } from '../../utils/escapeLikePattern';
 
-const senderInclude = [{ model: User, as: 'sender', attributes: ['id', 'username', 'displayName', 'profileImage'] }];
+const senderInclude = [
+  { model: User, as: 'sender', attributes: ['id', 'username', 'displayName', 'profileImage'] },
+  { model: Message, as: 'replyTo', attributes: ['id', 'senderId', 'content', 'type', 'mediaUrl'] },
+];
 
 const unreadBy = (userId: string, chatId: string | string[]): WhereOptions<MessageAttributes> => ({
   chatId,

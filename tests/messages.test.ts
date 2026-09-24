@@ -62,6 +62,16 @@ describe('messages', () => {
     await alice.post('/messages', { chatId, content: 'reply', replyToId: local.id }).expect(201);
   });
 
+  it('returns a summary of the replied message and hides it once deleted', async () => {
+    const original = await send(bob, 'original question');
+    const reply = await send(alice, 'the answer', { replyToId: original.id });
+    expect(reply.replyTo).toMatchObject({ id: original.id, senderId: bob.id, content: 'original question' });
+
+    await bob.delete(`/messages/${original.id}`).expect(204);
+    const [stored] = (await alice.get(`/messages/chat/${chatId}`).expect(200)).body;
+    expect(stored).toMatchObject({ id: reply.id, replyToId: original.id, replyTo: null });
+  });
+
   it('accepts only https media URLs', async () => {
     await alice.post('/messages', { chatId, content: 'x', type: 'image', mediaUrl: 'javascript:alert(1)' }).expect(400);
     await alice
