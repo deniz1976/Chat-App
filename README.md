@@ -7,7 +7,7 @@ An advanced real-time chat application built with Node.js, TypeScript, WebSocket
 ## Features
 
 *   **Real-time Messaging:** Utilizes WebSockets (`ws` library) for instant message delivery between connected clients.
-*   **User Authentication & Authorization:** Secure user login and session management using JSON Web Tokens (JWT). WebSocket connections are also authenticated via JWT.
+*   **User Authentication & Authorization:** Secure user login and session management using JSON Web Tokens (JWT) stored in an httpOnly, SameSite=Strict cookie. WebSocket connections are authenticated with the same cookie.
 *   **User Avatars:** Allows users to upload and update their profile pictures, stored in Cloudflare R2.
 *   **Direct & Group Chats:** Supports both one-on-one conversations and multi-user group chats.
 *   **Image Sharing:** Allows users to share images within chats, stored in Cloudflare R2.
@@ -66,7 +66,7 @@ public/                   # Static frontend files (HTML, CSS, JavaScript).
 
 ### Prerequisites
 
-*   Node.js (v16 or higher recommended)
+*   Node.js (v18 or higher)
 *   npm (usually comes with Node.js)
 *   PostgreSQL Server
 *   Cloudflare Account (for R2 object storage)
@@ -179,12 +179,9 @@ The application uses WebSockets for real-time features.
 
 ### Connection
 
-*   Clients connect to the WebSocket server at the `/ws` path (e.g., `ws://localhost:3000/ws`).
-*   **Authentication:** A valid JWT must be provided as a query parameter named `token` during the connection handshake.
-    ```
-    ws://localhost:3000/ws?token=YOUR_VALID_JWT_TOKEN
-    ```
-    Connections without a valid token will be rejected.
+*   Clients connect to the WebSocket server on the same host as the HTTP server (e.g., `ws://localhost:3000`).
+*   **Authentication:** The handshake is authenticated with the `access_token` httpOnly cookie set by the login and register endpoints. Browsers send it automatically on same-origin connections.
+*   **Origin Check:** The handshake is rejected unless the `Origin` header matches the server host, preventing cross-site WebSocket hijacking.
 *   **Keep-Alive:** The server uses a ping/pong mechanism every 30 seconds to detect and terminate stale connections. Clients should respond to pings with pongs to maintain the connection.
 
 ### Message Structure
@@ -244,7 +241,7 @@ Several security measures are implemented:
 
 *   **Helmet:** Sets various HTTP headers to protect against common web vulnerabilities (e.g., XSS, clickjacking).
 *   **CORS:** Configured using the `cors` middleware to control which origins are allowed to access the API.
-*   **JWT Authentication:** Secures API endpoints and WebSocket connections, ensuring only authenticated users can access resources or establish real-time connections.
+*   **JWT Authentication:** The token is delivered in an httpOnly, SameSite=Strict cookie (`Secure` in production), so it is not readable from JavaScript and is not sent on cross-site requests. It secures both API endpoints and WebSocket connections.
 *   **Role-Based Authorization:** Users have a `role` of `user` (default) or `admin`. A user can update or delete only their own account; admins can manage any account and change roles through `PUT /api/v1/users/:id/role`. The first admin must be promoted directly in the database:
     ```sql
     UPDATE users SET role = 'admin' WHERE email = 'you@example.com';

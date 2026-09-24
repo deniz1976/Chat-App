@@ -1,9 +1,8 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
-import url from 'url';
-import jwt from 'jsonwebtoken';
-import { config } from './config';
+import { Duplex } from 'stream';
 import { logger } from './utils/logger';
+import { AuthenticatedUser, getTokenFromCookieHeader, resolveUserFromToken } from './api/middlewares/auth';
 
 export enum WebSocketMessageType {
     NEW_MESSAGE = 'NEW_MESSAGE',
@@ -29,23 +28,59 @@ const clients = new Map<string, AuthenticatedWebSocket>();
 
 const userStatuses = new Map<string, 'online' | 'away' | 'offline'>();
 
-const verifyClient = (token: string): { userId: string; username: string; email: string } | null => {
-    if (!token) return null;
+const isSameOrigin = (req: http.IncomingMessage): boolean => {
+    const { origin, host } = req.headers;
+    if (!origin || !host) {
+        return false;
+    }
     try {
-        const decoded = jwt.verify(token, config.jwt.secret) as jwt.JwtPayload;
-        return {
-            userId: decoded.userId,
-            username: decoded.username,
-            email: decoded.email
-        };
-    } catch (err) {
-        logger.warn('WebSocket connection failed: Invalid token', { token });
-        return null;
+        return new URL(origin).host === host;
+    } catch {
+        return false;
     }
 };
 
+const rejectUpgrade = (socket: Duplex, statusCode: number, statusText: string) => {
+    socket.write(`HTTP/1.1 ${statusCode} ${statusText}\r\nConnection: close\r\n\r\n`);
+    socket.destroy();
+};
+
+const authenticateUpgrade = async (req: http.IncomingMessage): Promise<AuthenticatedUser | null> => {
+    const token = getTokenFromCookieHeader(req.headers.cookie);
+    if (!token) {
+        return null;
+    }
+    return resolveUserFromToken(token);
+};
+
 export const initializeWebSocket = (server: http.Server) => {
-    const wss = new WebSocketServer({ server });
+    const wss = new WebSocketServer({ noServer: true });
+
+    server.on('upgrade', async (req: http.IncomingMessage, socket: Duplex, head: Buffer) => {
+        if (!isSameOrigin(req)) {
+            logger.warn('WebSocket upgrade rejected: origin mismatch', { origin: req.headers.origin });
+            rejectUpgrade(socket, 403, 'Forbidden');
+            return;
+        }
+
+        let user: AuthenticatedUser | null;
+        try {
+            user = await authenticateUpgrade(req);
+        } catch (error) {
+            logger.error('WebSocket upgrade failed during authentication', { error });
+            rejectUpgrade(socket, 500, 'Internal Server Error');
+            return;
+        }
+
+        if (!user) {
+            rejectUpgrade(socket, 401, 'Unauthorized');
+            return;
+        }
+
+        wss.handleUpgrade(req, socket, head, (ws) => {
+            wss.emit('connection', ws, req, user);
+        });
+    });
 
     const interval = setInterval(() => {
         wss.clients.forEach((ws: AuthenticatedWebSocket) => {
@@ -66,28 +101,17 @@ export const initializeWebSocket = (server: http.Server) => {
         clearInterval(interval);
     });
 
-    wss.on('connection', (ws: AuthenticatedWebSocket, req: http.IncomingMessage) => {
-        const parameters = url.parse(req.url || '', true).query;
-        const token = parameters.token as string;
-
-        const userData = verifyClient(token);
-
-        if (!userData) {
-            logger.info('WebSocket connection rejected: No valid token provided');
-            ws.close(1008, 'Invalid or missing token'); 
-            return;
-        }
-
+    wss.on('connection', (ws: AuthenticatedWebSocket, req: http.IncomingMessage, userData: AuthenticatedUser) => {
         ws.isAlive = true;
         ws.on('pong', () => {
             ws.isAlive = true;
         });
 
-        ws.userId = userData.userId;
+        ws.userId = userData.id;
         ws.username = userData.username;
-        clients.set(userData.userId, ws);
-        updateUserStatus(userData.userId, 'online');
-        logger.info(`WebSocket client connected: ${userData.username} (ID: ${userData.userId})`);
+        clients.set(userData.id, ws);
+        updateUserStatus(userData.id, 'online');
+        logger.info(`WebSocket client connected: ${userData.username} (ID: ${userData.id})`);
 
         ws.on('message', (message: Buffer) => {
             try {

@@ -52,7 +52,6 @@ const changeAvatarBtn = document.getElementById('change-avatar-btn');
 const avatarUploadInput = document.getElementById('avatar-upload-input');
 const avatarUploadStatus = document.getElementById('avatar-upload-status');
 
-let jwtToken = localStorage.getItem('chatToken');
 let websocket = null;
 let currentUserId = null;
 let currentUsername = null;
@@ -66,7 +65,7 @@ let searchTimeout = null;
 let isLightboxOpen = false;
 
 const API_BASE_URL = '/api/v1';
-const WS_BASE_URL = `ws://${window.location.host}`;
+const WS_BASE_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}`;
 
 function showLoginForm() {
     loginContainer.classList.remove('hidden');
@@ -105,15 +104,10 @@ async function registerUser(username, displayName, email, password) {
             throw new Error(data.message || 'Registration failed');
         }
         
-        registerStatus.textContent = 'Registration successful! Redirecting to login...';
-        registerStatus.style.color = 'green';
-        
-        setTimeout(() => {
-            showLoginForm();
-            if (loginEmailInput) {
-                loginEmailInput.value = email;
-            }
-        }, 2000);
+        registerStatus.textContent = '';
+        currentUserId = data.user.id;
+        currentUsername = data.user.username;
+        updateLoginState(true);
     } catch (error) {
         console.error('Registration error:', error);
         registerStatus.textContent = 'Registration failed: ' + (error.message || 'Unknown error');
@@ -122,16 +116,9 @@ async function registerUser(username, displayName, email, password) {
 }
 
 async function fetchApi(endpoint, options = {}) {
-    if (!jwtToken && !endpoint.includes('login')) {
-        console.error('No JWT token available');
-        updateLoginState();
-        return null;
-    }
-
     const defaultOptions = {
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': jwtToken ? `Bearer ${jwtToken}` : ''
+            'Content-Type': 'application/json'
         }
     };
 
@@ -139,7 +126,7 @@ async function fetchApi(endpoint, options = {}) {
         const url = endpoint.startsWith('/') ? `/api/v1${endpoint}` : `/api/v1/${endpoint}`;
         const response = await fetch(url, { ...defaultOptions, ...options });
         
-        if (response.status === 401) {
+        if (response.status === 401 && currentUserId) {
             logoutUser();
             return null;
         }
@@ -163,23 +150,18 @@ async function loginUser(email, password) {
             body: JSON.stringify({ email, password }),
         });
         
-        if (!data || !data.token) {
-             throw new Error('Login failed: No token received.');
+        if (!data || !data.user) {
+             throw new Error('Invalid email or password');
         }
-        
-        jwtToken = data.token;
+
         currentUserId = data.user.id;
         currentUsername = data.user.username;
-        localStorage.setItem('chatToken', jwtToken);
         updateLoginState(true);
     } catch (error) {
         console.error('Login error:', error);
         loginStatus.textContent = `Error: ${error.message}`;
-        jwtToken = null;
         currentUserId = null;
         currentUsername = null;
-        localStorage.removeItem('chatToken');
-        
     }
 }
 
@@ -205,12 +187,7 @@ async function fetchMessages(chatId) {
         const url = `/api/v1/messages/chat/${chatId}?limit=100`;
         console.log(`Requesting URL: ${url}`);
         
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${jwtToken}`
-            }
-        });
+        const response = await fetch(url, { method: 'GET' });
         
         if (!response.ok) {
             throw new Error(`API request failed: ${response.status} ${response.statusText}`);
@@ -246,9 +223,6 @@ async function uploadImage(file) {
     try {
         const response = await fetch('/api/v1/upload/image', {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${jwtToken}`
-            },
             body: formData
         });
 
@@ -300,8 +274,7 @@ async function sendMessage(chatId, content, imageUrl = null) {
             const response = await fetch('/api/v1/messages', {
             method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${jwtToken}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(messageData)
             });
@@ -353,11 +326,11 @@ const WS_MESSAGE_TYPES = {
 };
 
 function connectWebSocket() {
-    if (!jwtToken) return;
+    if (!currentUserId) return;
     if (websocket && websocket.readyState === WebSocket.OPEN) return;
 
     console.log('WebSocket: Connecting...');
-    websocket = new WebSocket(`${WS_BASE_URL}?token=${jwtToken}`);
+    websocket = new WebSocket(WS_BASE_URL);
 
     websocket.onopen = () => {
         console.log('WebSocket: Connected');
@@ -783,41 +756,37 @@ function scrollToBottom() {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-function updateLoginState(isLoginSuccess = false) {
-    if (localStorage.getItem('chatToken')) {
-        jwtToken = localStorage.getItem('chatToken');
-        if (!currentUserId || !currentUsername) {
-            fetchApi('/users/profile')
-                .then(user => {
-                    if (user) {
-                        currentUserId = user.id;
-                        currentUsername = user.username;
-                        updateCurrentUserProfile(user);
-                        
-                        loginStatus.textContent = '';
-                        registerStatus.textContent = '';
-                        finalizeLoginState(true);
-                    } else {
-                        logoutUser();
-                    }
-                })
-                .catch(err => {
-                    console.error("Error fetching profile on load:", err);
-                    logoutUser();
-                });
-        } else {
-             fetchApi('/users/profile').then(user => updateCurrentUserProfile(user));
-             finalizeLoginState(isLoginSuccess);
+function showLoggedOutView() {
+    chatContainer.classList.add('hidden');
+    sidebar.classList.add('hidden');
+    showLoginForm();
+}
+
+async function updateLoginState(isLoginSuccess = false) {
+    if (currentUserId && currentUsername) {
+        fetchApi('/users/profile').then(user => updateCurrentUserProfile(user));
+        finalizeLoginState(isLoginSuccess);
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/users/profile`);
+        if (!response.ok) {
+            showLoggedOutView();
+            return;
         }
-    } else {
-        chatContainer.classList.add('hidden');
-        sidebar.classList.add('hidden');
-        showLoginForm(); 
-        
-        if (isLoginSuccess) {
-            loginStatus.textContent = '';
-        } else if (!loginStatus.textContent.includes('Error') && !loginStatus.textContent.includes('Logged out')) {
-        }
+
+        const user = await response.json();
+        currentUserId = user.id;
+        currentUsername = user.username;
+        updateCurrentUserProfile(user);
+
+        loginStatus.textContent = '';
+        registerStatus.textContent = '';
+        finalizeLoginState(true);
+    } catch (err) {
+        console.error('Error fetching profile on load:', err);
+        showLoggedOutView();
     }
 }
 
@@ -838,13 +807,15 @@ function finalizeLoginState(wasLoginAction = false) {
 }
 
 function logoutUser() {
-    jwtToken = null;
+    fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST' }).catch(err => {
+        console.error('Logout request failed:', err);
+    });
+
     currentUserId = null;
     currentUsername = null;
     selectedChatId = null;
     chatCache = {};
     userCache = {};
-    localStorage.removeItem('chatToken');
     disconnectWebSocket();
     
     chatListUl.innerHTML = '';
@@ -957,8 +928,6 @@ messageForm.addEventListener('submit', (e) => {
         sendMessage(selectedChatId, message);
     }
 });
-
-updateLoginState();
 
 function updateUserStatusIndicator(userId) {
     if (!userId) {
@@ -1464,10 +1433,7 @@ async function uploadAvatar(file) {
 
     try {
         const response = await fetch('/api/v1/users/profile/avatar', {
-            method: 'PUT', 
-            headers: {
-                'Authorization': `Bearer ${jwtToken}`
-            },
+            method: 'PUT',
             body: formData
         });
 

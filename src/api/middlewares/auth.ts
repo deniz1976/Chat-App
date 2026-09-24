@@ -1,7 +1,7 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, CookieOptions } from 'express';
 import jwt from 'jsonwebtoken';
+import { parse as parseCookie } from 'cookie';
 import { config } from '../../config';
-import { logger } from '../../utils/logger';
 import { User, UserRole } from '../../domain/entities/User';
 
 interface TokenPayload {
@@ -27,12 +27,41 @@ declare global {
   }
 }
 
+export const AUTH_COOKIE_NAME = 'access_token';
+
+const authCookieOptions = (): CookieOptions => ({
+  httpOnly: true,
+  secure: config.nodeEnv === 'production',
+  sameSite: 'strict',
+  path: '/',
+});
+
 export const generateToken = (userId: string, username: string, email: string): string => {
   return jwt.sign(
     { userId, username, email },
     config.jwt.secret,
     { expiresIn: config.jwt.expiresIn as jwt.SignOptions['expiresIn'] }
   );
+};
+
+export const issueAuthCookie = (res: Response, user: { id: string; username: string; email: string }): void => {
+  const token = generateToken(user.id, user.username, user.email);
+  const { exp } = jwt.decode(token) as TokenPayload;
+  res.cookie(AUTH_COOKIE_NAME, token, {
+    ...authCookieOptions(),
+    maxAge: exp * 1000 - Date.now(),
+  });
+};
+
+export const clearAuthCookie = (res: Response): void => {
+  res.clearCookie(AUTH_COOKIE_NAME, authCookieOptions());
+};
+
+export const getTokenFromCookieHeader = (cookieHeader?: string): string | undefined => {
+  if (!cookieHeader) {
+    return undefined;
+  }
+  return parseCookie(cookieHeader)[AUTH_COOKIE_NAME];
 };
 
 export const verifyToken = (token: string): Promise<TokenPayload> => {
@@ -47,40 +76,48 @@ export const verifyToken = (token: string): Promise<TokenPayload> => {
   });
 };
 
-export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const authHeader = req.headers.authorization;
+export const resolveUserFromToken = async (token: string): Promise<AuthenticatedUser | null> => {
+  let decoded: TokenPayload;
+  try {
+    decoded = await verifyToken(token);
+  } catch {
+    return null;
+  }
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const user = await User.findByPk(decoded.userId, {
+    attributes: ['id', 'username', 'email', 'role'],
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+  };
+};
+
+export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const token = getTokenFromCookieHeader(req.headers.cookie);
+
+  if (!token) {
     res.status(401).json({ message: 'Authentication required' });
     return;
   }
 
-  let decoded: TokenPayload;
   try {
-    decoded = await verifyToken(authHeader.split(' ')[1]);
-  } catch (error: any) {
-    logger.warn('Authentication failed: invalid or expired token', { reason: error?.message });
-    res.status(401).json({ message: 'Invalid or expired token' });
-    return;
-  }
-
-  try {
-    const user = await User.findByPk(decoded.userId, {
-      attributes: ['id', 'username', 'email', 'role'],
-    });
+    const user = await resolveUserFromToken(token);
 
     if (!user) {
+      clearAuthCookie(res);
       res.status(401).json({ message: 'Invalid or expired token' });
       return;
     }
 
-    req.user = {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-    };
-
+    req.user = user;
     next();
   } catch (error) {
     next(error);

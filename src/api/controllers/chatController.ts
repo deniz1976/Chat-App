@@ -57,7 +57,7 @@ import { Op } from 'sequelize';
  *     summary: Get all chats for current user
  *     tags: [Chats]
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     responses:
  *       200:
  *         description: List of chats
@@ -111,7 +111,7 @@ export const getChats = async (req: Request, res: Response): Promise<void> => {
  *     summary: Get chat by ID
  *     tags: [Chats]
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -182,7 +182,7 @@ export const getChat = async (req: Request, res: Response): Promise<void> => {
  *     summary: Create a new chat
  *     tags: [Chats]
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     requestBody:
  *       required: true
  *       content:

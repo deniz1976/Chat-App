@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import { User, UserCreationAttributes } from '../../domain/entities/User';
-import { generateToken } from '../middlewares/auth';
+import { clearAuthCookie, getTokenFromCookieHeader, issueAuthCookie, verifyToken } from '../middlewares/auth';
 import { logger } from '../../utils/logger';
 
 /**
@@ -59,10 +59,7 @@ import { logger } from '../../utils/logger';
  *                       type: string
  *                     displayName:
  *                       type: string
- *                 token:
- *                   type: string
- *                   description: JWT authentication token
- *       400:
+ * *       400:
  *         description: Invalid input data
  *       409:
  *         description: Username or email already exists
@@ -96,8 +93,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     };
 
     const user = await User.create(userData);
-    
-    const token = generateToken(user.id, user.username, user.email);
+
+    issueAuthCookie(res, user);
 
     const userResponse = {
       id: user.id,
@@ -108,10 +105,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       status: user.status,
     };
 
-    res.status(201).json({
-      user: userResponse,
-      token,
-    });
+    res.status(201).json({ user: userResponse });
   } catch (error: any) {
     logger.error('Registration error', { error });
     res.status(500).json({ message: 'Failed to register user' });
@@ -157,9 +151,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
  *                       type: string
  *                     email:
  *                       type: string
- *                 token:
- *                   type: string
- *       401:
+ * *       401:
  *         description: Invalid credentials
  *       500:
  *         description: Server error
@@ -186,8 +178,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     user.lastSeen = new Date();
     await user.save();
     
-    const token = generateToken(user.id, user.username, user.email);
-    
+    issueAuthCookie(res, user);
+
     const userResponse = {
       id: user.id,
       username: user.username,
@@ -197,10 +189,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       status: user.status,
     };
     
-    res.status(200).json({
-      user: userResponse,
-      token,
-    });
+    res.status(200).json({ user: userResponse });
   } catch (error: any) {
     logger.error('Login error', { error });
     res.status(500).json({ message: 'Failed to login' });
@@ -214,7 +203,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
  *     summary: Refresh authentication token
  *     tags: [Authentication]
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     responses:
  *       200:
  *         description: Token refreshed successfully
@@ -223,20 +212,16 @@ export const login = async (req: Request, res: Response): Promise<void> => {
  *             schema:
  *               type: object
  *               properties:
- *                 token:
- *                   type: string
- *       401:
+ * *       401:
  *         description: Unauthorized
  *       500:
  *         description: Server error
  */
 export const refreshToken = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id, username, email } = req.user!;
-    
-    const token = generateToken(id, username, email);
-    
-    res.status(200).json({ token });
+    issueAuthCookie(res, req.user!);
+
+    res.status(200).json({ message: 'Session refreshed' });
   } catch (error: any) {
     logger.error('Token refresh error', { error });
     res.status(500).json({ message: 'Failed to refresh token' });
@@ -249,28 +234,28 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
  *   post:
  *     summary: Logout from the application
  *     tags: [Authentication]
- *     security:
- *       - bearerAuth: []
+ *     security: []
  *     responses:
  *       200:
  *         description: Logged out successfully
- *       401:
- *         description: Unauthorized
  *       500:
  *         description: Server error
  */
 export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.user!;
-    
-    const user = await User.findByPk(id);
-    
-    if (user) {
-      user.status = 'offline';
-      user.lastSeen = new Date();
-      await user.save();
+    const token = getTokenFromCookieHeader(req.headers.cookie);
+    clearAuthCookie(res);
+
+    if (token) {
+      const decoded = await verifyToken(token).catch(() => null);
+      if (decoded) {
+        await User.update(
+          { status: 'offline', lastSeen: new Date() },
+          { where: { id: decoded.userId } }
+        );
+      }
     }
-    
+
     res.status(200).json({ message: 'Logged out successfully' });
   } catch (error: any) {
     logger.error('Logout error', { error });
