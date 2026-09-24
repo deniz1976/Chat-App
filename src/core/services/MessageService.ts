@@ -55,14 +55,10 @@ export class MessageService {
 
     await this.chats.setLastMessage(input.chatId, message.id);
 
-    this.notifier.sendToUsers(
-      chat.participants,
-      {
-        type: RealtimeEventType.NEW_MESSAGE,
-        payload: message,
-      },
-      senderId,
-    );
+    this.notifier.sendToUsers(chat.participants, {
+      type: RealtimeEventType.NEW_MESSAGE,
+      payload: message,
+    });
 
     return message;
   }

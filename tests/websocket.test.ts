@@ -97,6 +97,13 @@ describe('WebSocket', () => {
       await bobTab2.close();
     });
 
+    it('delivers sent messages to the other connections of the sender', async () => {
+      const aliceOtherTab = await connectAs(server, alice);
+      await alice.post('/messages', { chatId, content: 'from my phone' }).expect(201);
+      await aliceOtherTab.waitFor((e) => e.type === 'NEW_MESSAGE' && e.payload.content === 'from my phone');
+      await aliceOtherTab.close();
+    });
+
     it('relays typing only to participants and ignores client supplied recipients', async () => {
       const aliceSocket = await connectAs(server, alice);
       const carolSocket = await connectAs(server, carol);
