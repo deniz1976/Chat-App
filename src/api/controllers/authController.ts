@@ -59,7 +59,7 @@ import { logger } from '../../utils/logger';
  *                       type: string
  *                     displayName:
  *                       type: string
- * *       400:
+ *       400:
  *         description: Invalid input data
  *       409:
  *         description: Username or email already exists
@@ -151,7 +151,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
  *                       type: string
  *                     email:
  *                       type: string
- * *       401:
+ *       401:
  *         description: Invalid credentials
  *       500:
  *         description: Server error
@@ -206,13 +206,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
  *       - cookieAuth: []
  *     responses:
  *       200:
- *         description: Token refreshed successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- * *       401:
+ *         description: Session cookie refreshed
+ *       401:
  *         description: Unauthorized
  *       500:
  *         description: Server error
