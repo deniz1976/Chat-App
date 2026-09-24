@@ -11,6 +11,7 @@ export interface MessageRepository {
   updateContent(id: string, senderId: string, content: string): Promise<Message | null>;
   delete(id: string, senderId: string): Promise<boolean>;
   markAsRead(id: string, userId: string): Promise<boolean>;
+  markChatAsRead(chatId: string, userId: string): Promise<string[]>;
   countUnread(chatId: string, userId: string): Promise<number>;
   countUnreadByChat(chatIds: string[], userId: string): Promise<Map<string, number>>;
 }

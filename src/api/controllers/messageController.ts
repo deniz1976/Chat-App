@@ -35,6 +35,11 @@ export const markAsRead = async (req: Request, res: Response): Promise<void> => 
   res.status(200).json({ message: 'Message marked as read' });
 };
 
+export const markChatAsRead = async (req: Request, res: Response): Promise<void> => {
+  const messageIds = await messageService.markChatAsRead(req.params.id, req.user!.id);
+  res.status(200).json({ messageIds });
+};
+
 export const getUnreadCount = async (req: Request, res: Response): Promise<void> => {
   const unreadCount = await messageService.countUnread(req.params.chatId, req.user!.id);
   res.status(200).json({ unreadCount });

@@ -106,6 +106,18 @@ describe('messages', () => {
     expect(stored.body.readBy).toEqual([alice.id, bob.id]);
   });
 
+  it('marks every unread message of a chat as read at once', async () => {
+    const first = await send(alice, 'one');
+    const second = await send(alice, 'two');
+    await send(bob, 'mine');
+
+    const response = await bob.post(`/chats/${chatId}/read`).expect(200);
+    expect(response.body.messageIds.sort()).toEqual([first.id, second.id].sort());
+    expect((await bob.get(`/messages/chat/${chatId}/unread`)).body.unreadCount).toBe(0);
+    expect((await bob.post(`/chats/${chatId}/read`).expect(200)).body.messageIds).toEqual([]);
+    await carol.post(`/chats/${chatId}/read`).expect(403);
+  });
+
   it('searches content with escaped LIKE wildcards', async () => {
     await send(alice, '100% done');
     await send(alice, 'nothing here');

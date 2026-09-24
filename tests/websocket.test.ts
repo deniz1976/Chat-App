@@ -136,6 +136,7 @@ describe('WebSocket', () => {
       await sleep(100);
 
       expect(aliceSocket.events.filter((e) => e.type === 'READ_RECEIPT')).toHaveLength(1);
+      expect(aliceSocket.events.find((e) => e.type === 'READ_RECEIPT')!.payload.messageIds).toEqual([message.id]);
       expect((await alice.get(`/messages/${message.id}`)).body.readBy).toEqual([alice.id, bob.id]);
       await Promise.all([aliceSocket.close(), bobSocket.close()]);
     });

@@ -12,6 +12,7 @@ import {
   removeAdmin,
   leaveChat,
 } from '../controllers/chatController';
+import { markChatAsRead } from '../controllers/messageController';
 import { authenticate } from '../middlewares/auth';
 import { validateChatCreation, validateChatUpdate, validateParticipant } from '../validators/chatValidator';
 
@@ -30,6 +31,7 @@ router.delete('/:id', deleteChat);
 router.post('/:id/participants', validateParticipant, addParticipant);
 router.delete('/:id/participants/:userId', removeParticipant);
 router.post('/:id/leave', leaveChat);
+router.post('/:id/read', markChatAsRead);
 router.post('/:id/admins', validateParticipant, addAdmin);
 router.delete('/:id/admins/:userId', removeAdmin);
 

@@ -12,6 +12,10 @@ const unreadBy = (userId: string, chatId: string | string[]): WhereOptions<Messa
   [Op.not]: { readBy: { [Op.contains]: [userId] } },
 });
 
+const appendReader = (userId: string) => ({
+  readBy: Sequelize.fn('array_append', Sequelize.col('read_by'), Sequelize.cast(userId, 'uuid')) as unknown as string[],
+});
+
 const MEDIA_TYPES = [MessageType.IMAGE, MessageType.VIDEO, MessageType.AUDIO, MessageType.FILE];
 
 export class MessageRepositoryImpl implements MessageRepository {
@@ -106,17 +110,18 @@ export class MessageRepositoryImpl implements MessageRepository {
   }
 
   async markAsRead(id: string, userId: string): Promise<boolean> {
-    const [updated] = await Message.update(
-      {
-        readBy: Sequelize.fn(
-          'array_append',
-          Sequelize.col('read_by'),
-          Sequelize.cast(userId, 'uuid'),
-        ) as unknown as string[],
-      },
-      { where: { id, [Op.not]: { readBy: { [Op.contains]: [userId] } } } },
-    );
+    const [updated] = await Message.update(appendReader(userId), {
+      where: { id, [Op.not]: { readBy: { [Op.contains]: [userId] } } },
+    });
     return updated > 0;
+  }
+
+  async markChatAsRead(chatId: string, userId: string): Promise<string[]> {
+    const [, rows] = await Message.update(appendReader(userId), {
+      where: unreadBy(userId, chatId),
+      returning: ['id'],
+    });
+    return rows.map((row) => row.id);
   }
 
   countUnread(chatId: string, userId: string): Promise<number> {

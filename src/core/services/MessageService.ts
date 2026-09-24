@@ -109,18 +109,18 @@ export class MessageService {
     }
     const chat = await this.chatService.requireMembership(message.chatId, userId);
 
-    if (!(await this.messages.markAsRead(messageId, userId))) {
-      return;
+    if (await this.messages.markAsRead(messageId, userId)) {
+      this.publishReadReceipt(chat.id, chat.participants, userId, [messageId]);
     }
+  }
 
-    this.notifier.sendToUsers(
-      chat.participants,
-      {
-        type: RealtimeEventType.READ_RECEIPT,
-        payload: { chatId: chat.id, messageId, readerId: userId, timestamp: new Date().toISOString() },
-      },
-      userId,
-    );
+  async markChatAsRead(chatId: string, userId: string): Promise<string[]> {
+    const chat = await this.chatService.requireMembership(chatId, userId);
+    const messageIds = await this.messages.markChatAsRead(chatId, userId);
+    if (messageIds.length > 0) {
+      this.publishReadReceipt(chat.id, chat.participants, userId, messageIds);
+    }
+    return messageIds;
   }
 
   async countUnread(chatId: string, userId: string): Promise<number> {
@@ -148,6 +148,13 @@ export class MessageService {
       },
       userId,
     );
+  }
+
+  private publishReadReceipt(chatId: string, participants: string[], readerId: string, messageIds: string[]): void {
+    this.notifier.sendToUsers(participants, {
+      type: RealtimeEventType.READ_RECEIPT,
+      payload: { chatId, readerId, messageIds, timestamp: new Date().toISOString() },
+    });
   }
 
   private async requireMessage(messageId: string): Promise<Message> {
