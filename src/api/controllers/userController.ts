@@ -218,11 +218,8 @@ export const updateUserProfileAvatar = async (req: Request, res: Response): Prom
     }
 
     let profileImageUrl: string | null = null;
-    if (config.cloudflare.r2PublicHostname) {
-        const baseUrl = config.cloudflare.r2PublicHostname.startsWith('https://') 
-                        ? config.cloudflare.r2PublicHostname 
-                        : `https://${config.cloudflare.r2PublicHostname}`;
-        profileImageUrl = `${baseUrl}/${fileKey}`;
+    if (config.cloudflare.r2PublicBaseUrl) {
+        profileImageUrl = `${config.cloudflare.r2PublicBaseUrl}/${fileKey}`;
         logger.info(`Constructed public avatar URL for user ${userId}: ${profileImageUrl}`);
     } else {
         logger.error(`Avatar uploaded for user ${userId}, but CLOUDFLARE_R2_PUBLIC_HOSTNAME is not configured. Cannot generate public URL.`);

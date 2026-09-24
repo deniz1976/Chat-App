@@ -21,7 +21,13 @@ setupDatabase()
     logger.info('Database setup complete.');
 
     app.use(cors());
-    app.use(helmet());
+    app.use(helmet({
+      contentSecurityPolicy: {
+        directives: {
+          imgSrc: ["'self'", 'data:', ...(config.cloudflare.r2PublicBaseUrl ? [config.cloudflare.r2PublicBaseUrl] : [])],
+        },
+      },
+    }));
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 

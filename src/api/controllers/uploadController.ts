@@ -57,11 +57,9 @@ const uploadToCloudflareImages = async (fileBuffer: Buffer, filename: string, mi
 
 const uploadToR2 = async (fileBuffer: Buffer, mimetype: string, fileKey: string): Promise<string | null> => {
     const bucketName = config.cloudflare.r2BucketName;
-    const publicHostname = config.cloudflare.r2PublicHostname;
+    const publicBaseUrl = config.cloudflare.r2PublicBaseUrl;
 
-    const cleanPublicHostname = publicHostname.replace(/^https?:\/\//, '');
-
-    if (!bucketName || !cleanPublicHostname) {
+    if (!bucketName || !publicBaseUrl) {
         logger.error('R2 bucket name or public hostname is missing or invalid in config');
         return null;
     }
@@ -76,7 +74,7 @@ const uploadToR2 = async (fileBuffer: Buffer, mimetype: string, fileKey: string)
 
     try {
         await s3Client.send(command);
-        const fileUrl = `https://${cleanPublicHostname}/${fileKey}`;
+        const fileUrl = `${publicBaseUrl}/${fileKey}`;
         return fileUrl;
     } catch (error: any) {
         logger.error('Error uploading to R2', { error: error.message, bucket: bucketName, key: fileKey });

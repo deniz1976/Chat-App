@@ -22,6 +22,11 @@ const parseTrustProxy = (value?: string): boolean | number | string => {
   return Number.isInteger(hops) ? hops : value;
 };
 
+const toHttpsBaseUrl = (hostname?: string): string => {
+  const host = hostname?.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  return host ? `https://${host}` : '';
+};
+
 const MIN_JWT_SECRET_LENGTH = 32;
 
 const loadJwtSecret = (): string => {
@@ -54,7 +59,7 @@ export interface Config {
     apiToken: string;
     imagesApiToken: string;
     r2BucketName: string;
-    r2PublicHostname: string;
+    r2PublicBaseUrl: string;
     r2AccessKeyId: string;
     r2SecretAccessKey: string;
   };
@@ -82,7 +87,7 @@ export const config: Config = {
     apiToken: process.env.CLOUDFLARE_API_TOKEN || '',
     imagesApiToken: process.env.CLOUDFLARE_IMAGES_TOKEN || '',
     r2BucketName: process.env.CLOUDFLARE_R2_BUCKET_NAME || '',
-    r2PublicHostname: process.env.CLOUDFLARE_R2_PUBLIC_HOSTNAME || '',
+    r2PublicBaseUrl: toHttpsBaseUrl(process.env.CLOUDFLARE_R2_PUBLIC_HOSTNAME),
     r2AccessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || '',
     r2SecretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || '',
   },
