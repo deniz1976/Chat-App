@@ -138,6 +138,31 @@ describe('WebSocket', () => {
       await bobSocket.close();
     });
 
+    it('notifies every participant connection about edited and deleted messages', async () => {
+      const first = (await alice.post('/messages', { chatId, content: 'first' }).expect(201)).body;
+      const second = (await alice.post('/messages', { chatId, content: 'second' }).expect(201)).body;
+      const bobSocket = await connectAs(server, bob);
+      const aliceSocket = await connectAs(server, alice);
+
+      await alice.put(`/messages/${first.id}`, { content: 'first edited' }).expect(200);
+      const updated = await bobSocket.waitFor((e) => e.type === 'MESSAGE_UPDATED');
+      expect(updated.payload).toMatchObject({
+        message: { id: first.id, content: 'first edited' },
+        isLastMessage: false,
+      });
+      await aliceSocket.waitFor((e) => e.type === 'MESSAGE_UPDATED');
+
+      await alice.delete(`/messages/${second.id}`).expect(204);
+      const deleted = await bobSocket.waitFor((e) => e.type === 'MESSAGE_DELETED');
+      expect(deleted.payload).toMatchObject({ chatId, messageId: second.id, lastMessage: { id: first.id } });
+
+      await alice.delete(`/messages/${first.id}`).expect(204);
+      await bobSocket.waitFor(
+        (e) => e.type === 'MESSAGE_DELETED' && e.payload.messageId === first.id && e.payload.lastMessage === null,
+      );
+      await Promise.all([bobSocket.close(), aliceSocket.close()]);
+    });
+
     it('reports malformed and unsupported messages', async () => {
       const socket = await connectAs(server, alice);
       socket.send('not json');

@@ -113,7 +113,7 @@ export class ChatRepositoryImpl implements ChatRepository {
     return this.updateMembers(chatId, { admins: removeFrom('admins', userId) }, hasMember('admins', userId), 'admins');
   }
 
-  async setLastMessage(chatId: string, messageId: string): Promise<void> {
+  async setLastMessage(chatId: string, messageId: string | null): Promise<void> {
     await Chat.update({ lastMessageId: messageId }, { where: { id: chatId } });
   }
 

@@ -315,6 +315,8 @@ async function fetchUserInfo(userId) {
 
 const WS_MESSAGE_TYPES = {
     NEW_MESSAGE: 'NEW_MESSAGE',
+    MESSAGE_UPDATED: 'MESSAGE_UPDATED',
+    MESSAGE_DELETED: 'MESSAGE_DELETED',
     READ_RECEIPT: 'READ_RECEIPT',
     USER_STATUS: 'USER_STATUS',
     CHAT_CREATED: 'CHAT_CREATED',
@@ -364,6 +366,12 @@ function connectWebSocket() {
             switch (messageData.type) {
                 case WS_MESSAGE_TYPES.NEW_MESSAGE:
                     handleNewMessage(messageData.payload);
+                    break;
+                case WS_MESSAGE_TYPES.MESSAGE_UPDATED:
+                    handleMessageUpdated(messageData.payload);
+                    break;
+                case WS_MESSAGE_TYPES.MESSAGE_DELETED:
+                    handleMessageDeleted(messageData.payload);
                     break;
                 case WS_MESSAGE_TYPES.READ_RECEIPT:
                     handleReadReceipt(messageData.payload);
@@ -436,6 +444,27 @@ function handleNewMessage(payload) {
     }
     
     updateChatListPreview(payload.chatId, payload);
+}
+
+function handleMessageUpdated({ message, isLastMessage }) {
+    const messageElement = document.querySelector(`[data-message-id="${message.id}"]`);
+    const contentElement = messageElement && messageElement.querySelector('.message-content');
+    if (contentElement && message.type === 'text') {
+        contentElement.textContent = message.content;
+    }
+    if (isLastMessage) {
+        updateChatListPreview(message.chatId, message);
+    }
+}
+
+function handleMessageDeleted({ chatId, messageId, lastMessage }) {
+    const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (messageElement) {
+        messageElement.remove();
+    }
+    if (lastMessage !== undefined) {
+        updateChatListPreview(chatId, lastMessage);
+    }
 }
 
 function handleReadReceipt(payload) {
@@ -743,8 +772,8 @@ function selectChat(chatId) {
 
 function updateChatListPreview(chatId, lastMessage) {
     const lastMsgSpan = document.getElementById(`last-msg-${chatId}`);
-    if (lastMsgSpan && lastMessage) {
-        lastMsgSpan.textContent = lastMessage.content;
+    if (lastMsgSpan) {
+        lastMsgSpan.textContent = lastMessage ? lastMessage.content : '';
     }
 }
 

@@ -80,6 +80,19 @@ describe('messages', () => {
     await alice.get(`/messages/${message.id}`).expect(404);
   });
 
+  it('moves the chat last message back when the last message is deleted', async () => {
+    const first = await send(alice, 'first');
+    const second = await send(bob, 'second');
+
+    await alice.delete(`/messages/${first.id}`).expect(204);
+    expect((await alice.get(`/chats/${chatId}`)).body.lastMessageId).toBe(second.id);
+
+    await bob.delete(`/messages/${second.id}`).expect(204);
+    const chat = await alice.get(`/chats/${chatId}`).expect(200);
+    expect(chat.body.lastMessageId).toBeNull();
+    expect(chat.body.lastMessage).toBeNull();
+  });
+
   it('tracks unread messages and read receipts idempotently', async () => {
     const first = await send(alice, 'one');
     await send(alice, 'two');

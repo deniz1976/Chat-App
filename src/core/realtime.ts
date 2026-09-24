@@ -2,6 +2,8 @@ import { UserStatus } from '../domain/entities/User';
 
 export enum RealtimeEventType {
   NEW_MESSAGE = 'NEW_MESSAGE',
+  MESSAGE_UPDATED = 'MESSAGE_UPDATED',
+  MESSAGE_DELETED = 'MESSAGE_DELETED',
   TYPING = 'TYPING',
   READ_RECEIPT = 'READ_RECEIPT',
   USER_STATUS = 'USER_STATUS',

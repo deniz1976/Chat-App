@@ -13,6 +13,17 @@ export class MessageRepositoryImpl implements MessageRepository {
     return Message.findByPk(id, { include: senderInclude });
   }
 
+  findLatestInChat(chatId: string): Promise<Message | null> {
+    return Message.findOne({
+      where: { chatId },
+      order: [
+        ['createdAt', 'DESC'],
+        ['id', 'DESC'],
+      ],
+      include: senderInclude,
+    });
+  }
+
   async existsInChat(id: string, chatId: string): Promise<boolean> {
     const count = await Message.count({ where: { id, chatId } });
     return count > 0;

@@ -18,5 +18,5 @@ export interface ChatRepository {
   removeParticipant(chatId: string, userId: string): Promise<string[] | null>;
   addAdmin(chatId: string, userId: string): Promise<string[] | null>;
   removeAdmin(chatId: string, userId: string): Promise<string[] | null>;
-  setLastMessage(chatId: string, messageId: string): Promise<void>;
+  setLastMessage(chatId: string, messageId: string | null): Promise<void>;
 }

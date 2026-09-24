@@ -2,6 +2,7 @@ import { Message, MessageCreationAttributes } from '../entities/Message';
 
 export interface MessageRepository {
   findById(id: string): Promise<Message | null>;
+  findLatestInChat(chatId: string): Promise<Message | null>;
   existsInChat(id: string, chatId: string): Promise<boolean>;
   findPage(chatId: string, limit: number, beforeId?: string): Promise<Message[] | null>;
   findMedia(chatId: string, limit: number, offset: number): Promise<Message[]>;

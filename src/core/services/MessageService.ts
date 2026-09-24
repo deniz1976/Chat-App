@@ -72,13 +72,38 @@ export class MessageService {
     if (!message) {
       throw new NotFoundError('Message not found or you are not the sender');
     }
+
+    const chat = await this.chats.findById(message.chatId);
+    if (chat) {
+      this.notifier.sendToUsers(chat.participants, {
+        type: RealtimeEventType.MESSAGE_UPDATED,
+        payload: { message, isLastMessage: chat.lastMessageId === message.id },
+      });
+    }
     return message;
   }
 
   async delete(messageId: string, senderId: string): Promise<void> {
-    if (!(await this.messages.delete(messageId, senderId))) {
+    const message = await this.messages.findById(messageId);
+    if (!message || message.senderId !== senderId || !(await this.messages.delete(messageId, senderId))) {
       throw new NotFoundError('Message not found or you are not the sender');
     }
+
+    const chat = await this.chats.findById(message.chatId);
+    if (!chat) {
+      return;
+    }
+
+    let lastMessage: Message | null | undefined;
+    if (chat.lastMessageId === messageId) {
+      lastMessage = await this.messages.findLatestInChat(chat.id);
+      await this.chats.setLastMessage(chat.id, lastMessage?.id ?? null);
+    }
+
+    this.notifier.sendToUsers(chat.participants, {
+      type: RealtimeEventType.MESSAGE_DELETED,
+      payload: { chatId: chat.id, messageId, ...(lastMessage !== undefined && { lastMessage }) },
+    });
   }
 
   async markAsRead(messageId: string, userId: string, expectedChatId?: string): Promise<void> {
