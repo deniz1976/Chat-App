@@ -346,13 +346,8 @@ export const deleteChat = async (req: Request, res: Response): Promise<void> => 
 
 export const addParticipant = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params; 
-  const { userId: participantId } = req.body; 
+  const { userId: participantId } = req.body;
   const requesterId = req.user!.id;
-
-  if (!participantId) {
-      res.status(400).json({ message: 'User ID to add is required' });
-      return;
-  }
 
   try {
     const chat = await Chat.findByPk(id);
@@ -377,6 +372,12 @@ export const addParticipant = async (req: Request, res: Response): Promise<void>
       return;
     }
 
+    const participantExists = await User.count({ where: { id: participantId } });
+    if (!participantExists) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
     const updatedParticipants = [...chat.participants, participantId];
     await chat.update({ participants: updatedParticipants });
 
@@ -389,11 +390,11 @@ export const addParticipant = async (req: Request, res: Response): Promise<void>
 };
 
 export const removeParticipant = async (req: Request, res: Response): Promise<void> => {
-  const { id, participantId } = req.params; 
+  const { id, userId: participantId } = req.params;
   const requesterId = req.user!.id;
 
   if (participantId === requesterId) {
-      res.status(400).json({ message: 'You cannot remove yourself using this endpoint. Use leave chat instead.' });
+      res.status(400).json({ message: 'You cannot remove yourself using this endpoint. Use POST /chats/:id/leave instead.' });
       return;
   }
 
@@ -412,6 +413,11 @@ export const removeParticipant = async (req: Request, res: Response): Promise<vo
 
     if (!chat.admins.includes(requesterId) && chat.createdBy !== requesterId) {
       res.status(403).json({ message: 'Only admins or the creator can remove participants' });
+      return;
+    }
+
+    if (participantId === chat.createdBy) {
+      res.status(400).json({ message: 'Cannot remove the chat creator' });
       return;
     }
 
@@ -436,11 +442,6 @@ export const addAdmin = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params; 
   const { userId: adminId } = req.body;
   const requesterId = req.user!.id;
-
-  if (!adminId) {
-      res.status(400).json({ message: 'User ID to make admin is required' });
-      return;
-  }
 
   try {
     const chat = await Chat.findByPk(id);
@@ -482,7 +483,7 @@ export const addAdmin = async (req: Request, res: Response): Promise<void> => {
 };
 
 export const removeAdmin = async (req: Request, res: Response): Promise<void> => {
-  const { id, adminId } = req.params;
+  const { id, userId: adminId } = req.params;
   const requesterId = req.user!.id;
 
   try {
@@ -524,3 +525,37 @@ export const removeAdmin = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
+export const leaveChat = async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+
+  try {
+    const chat = await Chat.findByPk(id);
+
+    if (!chat || !chat.participants.includes(userId)) {
+      res.status(404).json({ message: 'Chat not found' });
+      return;
+    }
+
+    if (chat.type !== ChatType.GROUP) {
+      res.status(400).json({ message: 'Cannot leave a direct chat' });
+      return;
+    }
+
+    if (chat.createdBy === userId) {
+      res.status(400).json({ message: 'The chat creator cannot leave the chat. Delete the chat instead.' });
+      return;
+    }
+
+    await chat.update({
+      participants: chat.participants.filter(p => p !== userId),
+      admins: chat.admins.filter(a => a !== userId),
+    });
+
+    res.status(204).send();
+    logger.info(`User ${userId} left chat ${id}`);
+  } catch (error: any) {
+    logger.error(`Error leaving chat ${id}`, { error, userId });
+    res.status(500).json({ message: 'Failed to leave chat' });
+  }
+};
