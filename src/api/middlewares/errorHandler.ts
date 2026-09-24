@@ -24,12 +24,7 @@ export const notFoundHandler = (req: Request, res: Response): void => {
   res.status(404).json({ message: 'Not found' });
 };
 
-export const errorHandler = (
-  err: HttpError,
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
+export const errorHandler = (err: HttpError, req: Request, res: Response, next: NextFunction): void => {
   if (res.headersSent) {
     next(err);
     return;

@@ -36,7 +36,7 @@ export const setupTestDatabase = (): void => {
 
 export const extractAuthCookie = (response: request.Response): string => {
   const cookies = ([] as string[]).concat(response.headers['set-cookie'] ?? []);
-  const cookie = cookies.find(value => value.startsWith('access_token='));
+  const cookie = cookies.find((value) => value.startsWith('access_token='));
   if (!cookie) {
     throw new Error('Response did not set an auth cookie');
   }
@@ -48,10 +48,24 @@ export const asUser = (id: string, username: string, email: string, cookie: stri
   username,
   email,
   cookie,
-  get: (path) => request(app).get(API + path).set('Cookie', cookie),
-  post: (path, body) => request(app).post(API + path).set('Cookie', cookie).send(body),
-  put: (path, body) => request(app).put(API + path).set('Cookie', cookie).send(body),
-  delete: (path) => request(app).delete(API + path).set('Cookie', cookie),
+  get: (path) =>
+    request(app)
+      .get(API + path)
+      .set('Cookie', cookie),
+  post: (path, body) =>
+    request(app)
+      .post(API + path)
+      .set('Cookie', cookie)
+      .send(body),
+  put: (path, body) =>
+    request(app)
+      .put(API + path)
+      .set('Cookie', cookie)
+      .send(body),
+  delete: (path) =>
+    request(app)
+      .delete(API + path)
+      .set('Cookie', cookie),
 });
 
 export const createUser = async (username: string): Promise<TestUser> => {
@@ -81,16 +95,17 @@ export interface TestServer {
 export const startServer = async (): Promise<TestServer> => {
   const server = http.createServer(app);
   const wss = initializeWebSocket(server);
-  await new Promise<void>(resolve => server.listen(0, resolve));
+  await new Promise<void>((resolve) => server.listen(0, resolve));
   const { port } = server.address() as AddressInfo;
   return {
     url: `ws://localhost:${port}`,
     origin: `http://localhost:${port}`,
-    close: () => new Promise<void>(resolve => {
-      wss.clients.forEach(client => client.terminate());
-      wss.close();
-      server.close(() => resolve());
-    }),
+    close: () =>
+      new Promise<void>((resolve) => {
+        wss.clients.forEach((client) => client.terminate());
+        wss.close();
+        server.close(() => resolve());
+      }),
   };
 };
 
@@ -98,7 +113,10 @@ export interface TestSocket {
   socket: WebSocket;
   events: Array<{ type: string; payload: any }>;
   send(message: unknown): void;
-  waitFor(predicate: (event: { type: string; payload: any }) => boolean, timeoutMs?: number): Promise<{ type: string; payload: any }>;
+  waitFor(
+    predicate: (event: { type: string; payload: any }) => boolean,
+    timeoutMs?: number,
+  ): Promise<{ type: string; payload: any }>;
   close(): Promise<void>;
 }
 
@@ -106,32 +124,36 @@ export const connect = (server: TestServer, headers: Record<string, string>): Pr
   new Promise((resolve, reject) => {
     const socket = new WebSocket(server.url, { headers });
     const events: TestSocket['events'] = [];
-    socket.on('message', data => events.push(JSON.parse(data.toString())));
+    socket.on('message', (data) => events.push(JSON.parse(data.toString())));
     socket.on('unexpected-response', (req, res) => resolve(res.statusCode ?? 0));
     socket.on('error', reject);
-    socket.on('open', () => resolve({
-      socket,
-      events,
-      send: (message) => socket.send(typeof message === 'string' ? message : JSON.stringify(message)),
-      waitFor: (predicate, timeoutMs = 2000) => new Promise((resolveEvent, rejectEvent) => {
-        const started = Date.now();
-        const poll = () => {
-          const match = events.find(predicate);
-          if (match) {
-            resolveEvent(match);
-          } else if (Date.now() - started > timeoutMs) {
-            rejectEvent(new Error('Timed out waiting for WebSocket event'));
-          } else {
-            setTimeout(poll, 10);
-          }
-        };
-        poll();
+    socket.on('open', () =>
+      resolve({
+        socket,
+        events,
+        send: (message) => socket.send(typeof message === 'string' ? message : JSON.stringify(message)),
+        waitFor: (predicate, timeoutMs = 2000) =>
+          new Promise((resolveEvent, rejectEvent) => {
+            const started = Date.now();
+            const poll = () => {
+              const match = events.find(predicate);
+              if (match) {
+                resolveEvent(match);
+              } else if (Date.now() - started > timeoutMs) {
+                rejectEvent(new Error('Timed out waiting for WebSocket event'));
+              } else {
+                setTimeout(poll, 10);
+              }
+            };
+            poll();
+          }),
+        close: () =>
+          new Promise((resolveClose) => {
+            socket.once('close', () => resolveClose());
+            socket.close();
+          }),
       }),
-      close: () => new Promise(resolveClose => {
-        socket.once('close', () => resolveClose());
-        socket.close();
-      }),
-    }));
+    );
   });
 
 export const connectAs = async (server: TestServer, user: TestUser): Promise<TestSocket> => {
@@ -142,4 +164,4 @@ export const connectAs = async (server: TestServer, user: TestUser): Promise<Tes
   return result;
 };
 
-export const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
+export const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));

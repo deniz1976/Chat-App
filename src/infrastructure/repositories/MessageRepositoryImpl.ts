@@ -4,9 +4,7 @@ import { User } from '../../domain/entities/User';
 import { MessageRepository } from '../../domain/repositories/MessageRepository';
 import { escapeLikePattern } from '../../utils/escapeLikePattern';
 
-const senderInclude = [
-  { model: User, as: 'sender', attributes: ['id', 'username', 'displayName', 'profileImage'] },
-];
+const senderInclude = [{ model: User, as: 'sender', attributes: ['id', 'username', 'displayName', 'profileImage'] }];
 
 const MEDIA_TYPES = [MessageType.IMAGE, MessageType.VIDEO, MessageType.AUDIO, MessageType.FILE];
 
@@ -39,7 +37,10 @@ export class MessageRepositoryImpl implements MessageRepository {
     const messages = await Message.findAll({
       where: { [Op.and]: conditions },
       limit,
-      order: [['createdAt', 'DESC'], ['id', 'DESC']],
+      order: [
+        ['createdAt', 'DESC'],
+        ['id', 'DESC'],
+      ],
       include: senderInclude,
     });
 
@@ -51,7 +52,10 @@ export class MessageRepositoryImpl implements MessageRepository {
       where: { chatId, type: { [Op.in]: MEDIA_TYPES } },
       limit,
       offset,
-      order: [['createdAt', 'DESC'], ['id', 'DESC']],
+      order: [
+        ['createdAt', 'DESC'],
+        ['id', 'DESC'],
+      ],
       include: senderInclude,
     });
   }
@@ -61,7 +65,10 @@ export class MessageRepositoryImpl implements MessageRepository {
       where: { chatId, content: { [Op.iLike]: `%${escapeLikePattern(query)}%` } },
       limit,
       offset,
-      order: [['createdAt', 'DESC'], ['id', 'DESC']],
+      order: [
+        ['createdAt', 'DESC'],
+        ['id', 'DESC'],
+      ],
       include: senderInclude,
     });
   }
@@ -83,7 +90,13 @@ export class MessageRepositoryImpl implements MessageRepository {
 
   async markAsRead(id: string, userId: string): Promise<boolean> {
     const [updated] = await Message.update(
-      { readBy: Sequelize.fn('array_append', Sequelize.col('read_by'), Sequelize.cast(userId, 'uuid')) as unknown as string[] },
+      {
+        readBy: Sequelize.fn(
+          'array_append',
+          Sequelize.col('read_by'),
+          Sequelize.cast(userId, 'uuid'),
+        ) as unknown as string[],
+      },
       { where: { id, [Op.not]: { readBy: { [Op.contains]: [userId] } } } },
     );
     return updated > 0;

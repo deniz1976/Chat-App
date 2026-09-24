@@ -11,10 +11,18 @@ const messageCreationSchema = joi.object({
   content: joi.string().required().messages({
     'any.required': 'Message content is required',
   }),
-  type: joi.string().valid(...Object.values(MessageType)).default(MessageType.TEXT).messages({
-    'any.only': 'Please enter a valid message type',
-  }),
-  mediaUrl: joi.string().uri({ scheme: ['https'] }).allow(null, '').optional(),
+  type: joi
+    .string()
+    .valid(...Object.values(MessageType))
+    .default(MessageType.TEXT)
+    .messages({
+      'any.only': 'Please enter a valid message type',
+    }),
+  mediaUrl: joi
+    .string()
+    .uri({ scheme: ['https'] })
+    .allow(null, '')
+    .optional(),
   replyToId: joi.string().uuid().allow(null, '').optional(),
 });
 

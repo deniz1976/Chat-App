@@ -23,7 +23,10 @@ export interface UserAttributes {
   deletedAt?: Date | null;
 }
 
-export type UserCreationAttributes = Optional<UserAttributes, 'id' | 'status' | 'role' | 'lastSeen' | 'profileImage' | 'createdAt' | 'updatedAt' | 'deletedAt'>;
+export type UserCreationAttributes = Optional<
+  UserAttributes,
+  'id' | 'status' | 'role' | 'lastSeen' | 'profileImage' | 'createdAt' | 'updatedAt' | 'deletedAt'
+>;
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   declare id: string;
@@ -123,8 +126,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
             }
           },
         },
-      }
+      },
     );
   }
 }
-

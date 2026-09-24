@@ -12,7 +12,7 @@ export const setupApiRoutes = (app: Express): void => {
   const API_PREFIX = '/api/v1';
 
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
-  
+
   app.use(API_PREFIX, apiRateLimiter);
   app.use(`${API_PREFIX}/auth`, authRoutes);
   app.use(`${API_PREFIX}/users`, userRoutes);
@@ -23,4 +23,4 @@ export const setupApiRoutes = (app: Express): void => {
   app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
   });
-}; 
+};

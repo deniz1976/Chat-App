@@ -10,8 +10,12 @@ describe('application', () => {
 
   it('answers malformed JSON with 400', async () => {
     const alice = await createUser('alice');
-    await request(app).post(`${API}/chats`).set('Cookie', alice.cookie)
-      .set('Content-Type', 'application/json').send('{bad').expect(400);
+    await request(app)
+      .post(`${API}/chats`)
+      .set('Cookie', alice.cookie)
+      .set('Content-Type', 'application/json')
+      .send('{bad')
+      .expect(400);
   });
 
   it('does not enable CORS by default', async () => {

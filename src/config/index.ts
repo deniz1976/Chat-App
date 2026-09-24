@@ -12,7 +12,10 @@ const requireEnv = (name: string): string => {
 };
 
 const parseList = (value?: string): string[] =>
-  (value ?? '').split(',').map(item => item.trim()).filter(Boolean);
+  (value ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
 
 const parseTrustProxy = (value?: string): boolean | number | string => {
   if (!value || value === 'false') {
@@ -26,7 +29,10 @@ const parseTrustProxy = (value?: string): boolean | number | string => {
 };
 
 const toHttpsBaseUrl = (hostname?: string): string => {
-  const host = hostname?.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  const host = hostname
+    ?.trim()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/+$/, '');
   return host ? `https://${host}` : '';
 };
 

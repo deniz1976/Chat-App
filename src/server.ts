@@ -20,7 +20,7 @@ const start = async (): Promise<void> => {
     logger.info(`${signal} received, shutting down gracefully`);
     setTimeout(() => process.exit(1), SHUTDOWN_TIMEOUT_MS).unref();
 
-    wss.clients.forEach(client => client.close(1001, 'Server shutting down'));
+    wss.clients.forEach((client) => client.close(1001, 'Server shutting down'));
     wss.close();
     server.close(async () => {
       await sequelize.close();

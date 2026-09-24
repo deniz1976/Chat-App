@@ -12,4 +12,4 @@ router.post('/image', singleFileUpload(UploadKind.IMAGE), uploadImage);
 router.post('/audio', singleFileUpload(UploadKind.AUDIO), uploadAudio);
 router.post('/file', singleFileUpload(UploadKind.FILE), uploadFile);
 
-export default router; 
+export default router;

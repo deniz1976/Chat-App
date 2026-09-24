@@ -61,6 +61,8 @@ export const setupDatabase = async (): Promise<void> => {
 
   const pending = await createMigrator(sequelize).pending();
   if (pending.length > 0) {
-    throw new Error(`Database has pending migrations: ${pending.map(m => m.name).join(', ')}. Run "npm run migrate" first.`);
+    throw new Error(
+      `Database has pending migrations: ${pending.map((m) => m.name).join(', ')}. Run "npm run migrate" first.`,
+    );
   }
 };

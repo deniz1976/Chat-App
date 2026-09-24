@@ -32,9 +32,12 @@ const registrationSchema = joi.object({
     'string.max': 'Display name cannot exceed 50 characters',
     'any.required': 'Display name is required',
   }),
-  profileImage: joi.string().uri({ scheme: ['https'] }).optional(),
+  profileImage: joi
+    .string()
+    .uri({ scheme: ['https'] })
+    .optional(),
 });
 
 export const validateLogin = validateBody(loginSchema);
 
-export const validateRegistration = validateBody(registrationSchema); 
+export const validateRegistration = validateBody(registrationSchema);

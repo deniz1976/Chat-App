@@ -14,8 +14,8 @@ const run = async (): Promise<void> => {
     logger.info(`Reverted ${reverted.length} migration(s)`);
   } else if (command === 'status') {
     const [executed, pending] = await Promise.all([migrator.executed(), migrator.pending()]);
-    logger.info(`Executed: ${executed.map(m => m.name).join(', ') || 'none'}`);
-    logger.info(`Pending: ${pending.map(m => m.name).join(', ') || 'none'}`);
+    logger.info(`Executed: ${executed.map((m) => m.name).join(', ') || 'none'}`);
+    logger.info(`Pending: ${pending.map((m) => m.name).join(', ') || 'none'}`);
   } else {
     throw new Error(`Unknown migration command: ${command}`);
   }

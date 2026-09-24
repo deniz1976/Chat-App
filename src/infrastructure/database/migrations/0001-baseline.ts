@@ -7,7 +7,8 @@ export const up: Migration = async ({ queryInterface, sequelize }) => {
   }
 
   await sequelize.transaction(async (transaction) => {
-    await sequelize.query(`
+    await sequelize.query(
+      `
       CREATE TYPE enum_users_status AS ENUM ('online', 'offline', 'away');
       CREATE TYPE enum_chats_type AS ENUM ('direct', 'group');
       CREATE TYPE enum_messages_type AS ENUM ('text', 'image', 'video', 'audio', 'file');
@@ -56,7 +57,9 @@ export const up: Migration = async ({ queryInterface, sequelize }) => {
 
       ALTER TABLE chats
         ADD CONSTRAINT chats_last_message_id_fkey FOREIGN KEY (last_message_id) REFERENCES messages(id);
-    `, { transaction });
+    `,
+      { transaction },
+    );
   });
 };
 

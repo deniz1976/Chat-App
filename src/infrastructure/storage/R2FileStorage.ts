@@ -15,13 +15,15 @@ export class R2FileStorage implements FileStorage {
   constructor(private readonly settings: R2Settings) {}
 
   async store({ key, body, contentType, contentDisposition }: StoreFileInput): Promise<string> {
-    await this.getClient().send(new PutObjectCommand({
-      Bucket: this.settings.r2BucketName,
-      Key: key,
-      Body: body,
-      ContentType: contentType,
-      ContentDisposition: contentDisposition,
-    }));
+    await this.getClient().send(
+      new PutObjectCommand({
+        Bucket: this.settings.r2BucketName,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+        ContentDisposition: contentDisposition,
+      }),
+    );
     return `${this.settings.r2PublicBaseUrl}/${key}`;
   }
 

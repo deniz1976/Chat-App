@@ -4,7 +4,9 @@ import { createDirectChat, createUser, setupTestDatabase, TestUser } from './hel
 setupTestDatabase();
 
 const countDirectChats = async (): Promise<number> => {
-  const [rows] = await sequelize.query("SELECT count(*)::int AS count FROM chats WHERE type = 'direct' AND deleted_at IS NULL");
+  const [rows] = await sequelize.query(
+    "SELECT count(*)::int AS count FROM chats WHERE type = 'direct' AND deleted_at IS NULL",
+  );
   return (rows as Array<{ count: number }>)[0].count;
 };
 
@@ -63,7 +65,9 @@ describe('group chats', () => {
 
   beforeEach(async () => {
     [alice, bob, carol, dave] = await Promise.all(['alice', 'bob', 'carol', 'dave'].map(createUser));
-    const response = await alice.post('/chats', { type: 'group', name: 'team', participants: [bob.id, carol.id] }).expect(201);
+    const response = await alice
+      .post('/chats', { type: 'group', name: 'team', participants: [bob.id, carol.id] })
+      .expect(201);
     groupId = response.body.id;
   });
 

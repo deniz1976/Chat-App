@@ -1,6 +1,6 @@
 import express from 'express';
 import { validateUuidParams } from '../validators/paramValidator';
-import { 
+import {
   getMessages,
   getMessage,
   createMessage,
@@ -9,10 +9,14 @@ import {
   markAsRead,
   getUnreadCount,
   getMediaMessages,
-  searchMessages
+  searchMessages,
 } from '../controllers/messageController';
 import { authenticate } from '../middlewares/auth';
-import { validateMessageCreation, validateMessageListQuery, validateMessageUpdate } from '../validators/messageValidator';
+import {
+  validateMessageCreation,
+  validateMessageListQuery,
+  validateMessageUpdate,
+} from '../validators/messageValidator';
 import { validatePaginatedQuery } from '../validators/queryValidator';
 
 const router = express.Router();
@@ -31,4 +35,4 @@ router.put('/:id', validateMessageUpdate, updateMessage);
 router.delete('/:id', deleteMessage);
 router.put('/:id/read', markAsRead);
 
-export default router; 
+export default router;

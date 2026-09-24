@@ -22,7 +22,10 @@ export interface ChatAttributes {
   deletedAt?: Date | null;
 }
 
-export type ChatCreationAttributes = Optional<ChatAttributes, 'id' | 'name' | 'avatar' | 'lastMessageId' | 'admins' | 'directKey' | 'createdAt' | 'updatedAt' | 'deletedAt'>;
+export type ChatCreationAttributes = Optional<
+  ChatAttributes,
+  'id' | 'name' | 'avatar' | 'lastMessageId' | 'admins' | 'directKey' | 'createdAt' | 'updatedAt' | 'deletedAt'
+>;
 
 export class Chat extends Model<ChatAttributes, ChatCreationAttributes> implements ChatAttributes {
   declare id: string;
@@ -112,8 +115,7 @@ export class Chat extends Model<ChatAttributes, ChatCreationAttributes> implemen
         tableName: 'chats',
         sequelize,
         paranoid: true,
-      }
+      },
     );
   }
 }
-

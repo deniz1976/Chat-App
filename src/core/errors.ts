@@ -1,7 +1,10 @@
 export class AppError extends Error {
   public readonly isOperational = true;
 
-  constructor(message: string, public readonly statusCode: number) {
+  constructor(
+    message: string,
+    public readonly statusCode: number,
+  ) {
     super(message);
     this.name = new.target.name;
   }

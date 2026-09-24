@@ -1,6 +1,6 @@
 import express from 'express';
 import { validateUuidParams } from '../validators/paramValidator';
-import { 
+import {
   getChats,
   getChat,
   createChat,
@@ -10,7 +10,7 @@ import {
   removeParticipant,
   addAdmin,
   removeAdmin,
-  leaveChat
+  leaveChat,
 } from '../controllers/chatController';
 import { authenticate } from '../middlewares/auth';
 import { validateChatCreation, validateChatUpdate, validateParticipant } from '../validators/chatValidator';
@@ -33,4 +33,4 @@ router.post('/:id/leave', leaveChat);
 router.post('/:id/admins', validateParticipant, addAdmin);
 router.delete('/:id/admins/:userId', removeAdmin);
 
-export default router; 
+export default router;

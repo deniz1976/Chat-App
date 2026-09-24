@@ -15,7 +15,12 @@ describe('user authorization', () => {
   it('rejects fields that cannot be changed through profile updates', async () => {
     const alice = await createUser('alice');
 
-    for (const body of [{ role: 'admin' }, { email: 'x@example.com' }, { username: 'renamed' }, { password: 'newpassword' }]) {
+    for (const body of [
+      { role: 'admin' },
+      { email: 'x@example.com' },
+      { username: 'renamed' },
+      { password: 'newpassword' },
+    ]) {
       await alice.put(`/users/${alice.id}`, body).expect(400);
     }
     const profile = await alice.get('/users/profile').expect(200);
@@ -71,7 +76,9 @@ describe('user authorization', () => {
 
     expect((await alice.get('/users/search?q=example.com').expect(200)).body).toHaveLength(0);
     expect((await alice.get('/users/search?q=_').expect(200)).body).toHaveLength(0);
-    expect((await alice.get('/users/search?q=bo').expect(200)).body.map((u: { username: string }) => u.username)).toEqual(['bob']);
+    expect(
+      (await alice.get('/users/search?q=bo').expect(200)).body.map((u: { username: string }) => u.username),
+    ).toEqual(['bob']);
     await alice.get('/users/search').expect(400);
   });
 

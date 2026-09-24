@@ -58,7 +58,7 @@ export class ChatRepositoryImpl implements ChatRepository {
       where: hasMember('participants', userId),
       attributes: ['participants'],
     });
-    const contactIds = new Set<string>(chats.flatMap(chat => chat.participants));
+    const contactIds = new Set<string>(chats.flatMap((chat) => chat.participants));
     contactIds.delete(userId);
     return Array.from(contactIds);
   }
@@ -110,12 +110,7 @@ export class ChatRepositoryImpl implements ChatRepository {
   }
 
   removeAdmin(chatId: string, userId: string): Promise<string[] | null> {
-    return this.updateMembers(
-      chatId,
-      { admins: removeFrom('admins', userId) },
-      hasMember('admins', userId),
-      'admins',
-    );
+    return this.updateMembers(chatId, { admins: removeFrom('admins', userId) }, hasMember('admins', userId), 'admins');
   }
 
   async setLastMessage(chatId: string, messageId: string): Promise<void> {

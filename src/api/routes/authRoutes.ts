@@ -11,4 +11,4 @@ router.post('/login', loginRateLimiter, validateLogin, login);
 router.post('/refresh-token', authenticate, refreshToken);
 router.post('/logout', logout);
 
-export default router; 
+export default router;

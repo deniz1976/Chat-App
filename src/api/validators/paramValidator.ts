@@ -12,5 +12,5 @@ const validateUuidParam = (req: Request, res: Response, next: NextFunction, valu
 };
 
 export const validateUuidParams = (router: Router, ...names: string[]): void => {
-  names.forEach(name => router.param(name, validateUuidParam));
+  names.forEach((name) => router.param(name, validateUuidParam));
 };

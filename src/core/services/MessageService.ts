@@ -55,10 +55,14 @@ export class MessageService {
 
     await this.chats.setLastMessage(input.chatId, message.id);
 
-    this.notifier.sendToUsers(chat.participants, {
-      type: RealtimeEventType.NEW_MESSAGE,
-      payload: message,
-    }, senderId);
+    this.notifier.sendToUsers(
+      chat.participants,
+      {
+        type: RealtimeEventType.NEW_MESSAGE,
+        payload: message,
+      },
+      senderId,
+    );
 
     return message;
   }
@@ -88,10 +92,14 @@ export class MessageService {
       return;
     }
 
-    this.notifier.sendToUsers(chat.participants, {
-      type: RealtimeEventType.READ_RECEIPT,
-      payload: { chatId: chat.id, messageId, readerId: userId, timestamp: new Date().toISOString() },
-    }, userId);
+    this.notifier.sendToUsers(
+      chat.participants,
+      {
+        type: RealtimeEventType.READ_RECEIPT,
+        payload: { chatId: chat.id, messageId, readerId: userId, timestamp: new Date().toISOString() },
+      },
+      userId,
+    );
   }
 
   async countUnread(chatId: string, userId: string): Promise<number> {
@@ -111,10 +119,14 @@ export class MessageService {
 
   async publishTyping(chatId: string, userId: string, isTyping: boolean): Promise<void> {
     const chat = await this.chatService.requireMembership(chatId, userId);
-    this.notifier.sendToUsers(chat.participants, {
-      type: RealtimeEventType.TYPING,
-      payload: { chatId, userId, isTyping },
-    }, userId);
+    this.notifier.sendToUsers(
+      chat.participants,
+      {
+        type: RealtimeEventType.TYPING,
+        payload: { chatId, userId, isTyping },
+      },
+      userId,
+    );
   }
 
   private async requireMessage(messageId: string): Promise<Message> {

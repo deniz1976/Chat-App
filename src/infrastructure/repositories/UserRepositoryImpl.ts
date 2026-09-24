@@ -51,10 +51,7 @@ export class UserRepositoryImpl implements UserRepository {
     const pattern = `%${escapeLikePattern(query)}%`;
     return User.findAll({
       where: {
-        [Op.or]: [
-          { username: { [Op.iLike]: pattern } },
-          { displayName: { [Op.iLike]: pattern } },
-        ],
+        [Op.or]: [{ username: { [Op.iLike]: pattern } }, { displayName: { [Op.iLike]: pattern } }],
       },
       limit,
       offset,

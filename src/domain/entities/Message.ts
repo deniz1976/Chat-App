@@ -23,7 +23,10 @@ export interface MessageAttributes {
   deletedAt?: Date | null;
 }
 
-export type MessageCreationAttributes = Optional<MessageAttributes, 'id' | 'mediaUrl' | 'replyToId' | 'readBy' | 'createdAt' | 'updatedAt' | 'deletedAt'>;
+export type MessageCreationAttributes = Optional<
+  MessageAttributes,
+  'id' | 'mediaUrl' | 'replyToId' | 'readBy' | 'createdAt' | 'updatedAt' | 'deletedAt'
+>;
 
 export class Message extends Model<MessageAttributes, MessageCreationAttributes> implements MessageAttributes {
   declare id: string;
@@ -106,8 +109,7 @@ export class Message extends Model<MessageAttributes, MessageCreationAttributes>
         tableName: 'messages',
         sequelize,
         paranoid: true,
-      }
+      },
     );
   }
 }
-

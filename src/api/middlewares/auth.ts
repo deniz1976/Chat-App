@@ -36,11 +36,9 @@ const authCookieOptions = (): CookieOptions => ({
 });
 
 export const generateToken = (userId: string, username: string, email: string): string => {
-  return jwt.sign(
-    { userId, username, email },
-    config.jwt.secret,
-    { expiresIn: config.jwt.expiresIn as jwt.SignOptions['expiresIn'] }
-  );
+  return jwt.sign({ userId, username, email }, config.jwt.secret, {
+    expiresIn: config.jwt.expiresIn as jwt.SignOptions['expiresIn'],
+  });
 };
 
 export const issueAuthCookie = (res: Response, user: { id: string; username: string; email: string }): void => {

@@ -4,13 +4,15 @@ import { API, app, createUser, extractAuthCookie, setupTestDatabase } from './he
 setupTestDatabase();
 
 const register = (overrides: Record<string, string> = {}) =>
-  request(app).post(`${API}/auth/register`).send({
-    username: 'alice',
-    email: 'alice@example.com',
-    password: 'secret123',
-    displayName: 'Alice',
-    ...overrides,
-  });
+  request(app)
+    .post(`${API}/auth/register`)
+    .send({
+      username: 'alice',
+      email: 'alice@example.com',
+      password: 'secret123',
+      displayName: 'Alice',
+      ...overrides,
+    });
 
 describe('authentication', () => {
   it('registers a user and issues an httpOnly SameSite=Strict cookie instead of a token in the body', async () => {
@@ -34,10 +36,10 @@ describe('authentication', () => {
 
   it('answers concurrent registrations of the same username with a single success', async () => {
     const statuses = await Promise.all(
-      [1, 2, 3, 4].map(i => register({ email: `race${i}@example.com` }).then(r => r.status)),
+      [1, 2, 3, 4].map((i) => register({ email: `race${i}@example.com` }).then((r) => r.status)),
     );
-    expect(statuses.filter(status => status === 201)).toHaveLength(1);
-    expect(statuses.filter(status => status === 409)).toHaveLength(3);
+    expect(statuses.filter((status) => status === 201)).toHaveLength(1);
+    expect(statuses.filter((status) => status === 409)).toHaveLength(3);
   });
 
   it('rejects registration fields outside the schema', async () => {
@@ -46,17 +48,20 @@ describe('authentication', () => {
 
   it('logs in with valid credentials and rejects invalid ones', async () => {
     await register().expect(201);
-    const response = await request(app).post(`${API}/auth/login`)
+    const response = await request(app)
+      .post(`${API}/auth/login`)
       .send({ email: 'alice@example.com', password: 'secret123' })
       .expect(200);
     expect(extractAuthCookie(response)).toMatch(/^access_token=/);
 
-    const failure = await request(app).post(`${API}/auth/login`)
+    const failure = await request(app)
+      .post(`${API}/auth/login`)
       .send({ email: 'alice@example.com', password: 'wrong-password' })
       .expect(401);
     expect(failure.body.message).toBe('Invalid email or password');
 
-    await request(app).post(`${API}/auth/login`)
+    await request(app)
+      .post(`${API}/auth/login`)
       .send({ email: 'nobody@example.com', password: 'secret123' })
       .expect(401);
   });

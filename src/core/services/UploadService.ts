@@ -48,9 +48,24 @@ const AUDIO_EXTENSIONS = {
 };
 
 export const UPLOAD_POLICIES: Record<UploadKind, UploadPolicy> = {
-  [UploadKind.AVATAR]: { maxBytes: 15 * MB, extensions: IMAGE_EXTENSIONS, requireImageSignature: true, downloadAsAttachment: false },
-  [UploadKind.IMAGE]: { maxBytes: 15 * MB, extensions: IMAGE_EXTENSIONS, requireImageSignature: true, downloadAsAttachment: false },
-  [UploadKind.AUDIO]: { maxBytes: 25 * MB, extensions: AUDIO_EXTENSIONS, requireImageSignature: false, downloadAsAttachment: false },
+  [UploadKind.AVATAR]: {
+    maxBytes: 15 * MB,
+    extensions: IMAGE_EXTENSIONS,
+    requireImageSignature: true,
+    downloadAsAttachment: false,
+  },
+  [UploadKind.IMAGE]: {
+    maxBytes: 15 * MB,
+    extensions: IMAGE_EXTENSIONS,
+    requireImageSignature: true,
+    downloadAsAttachment: false,
+  },
+  [UploadKind.AUDIO]: {
+    maxBytes: 25 * MB,
+    extensions: AUDIO_EXTENSIONS,
+    requireImageSignature: false,
+    downloadAsAttachment: false,
+  },
   [UploadKind.FILE]: {
     maxBytes: 25 * MB,
     extensions: {

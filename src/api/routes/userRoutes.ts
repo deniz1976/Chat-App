@@ -1,15 +1,15 @@
 import express from 'express';
 import { validateUuidParams } from '../validators/paramValidator';
-import { 
-  getUsers, 
-  getUser, 
-  updateUser, 
-  deleteUser, 
+import {
+  getUsers,
+  getUser,
+  updateUser,
+  deleteUser,
   updateStatus,
   searchUsers,
   getUserProfile,
   updateUserProfileAvatar,
-  updateRole
+  updateRole,
 } from '../controllers/userController';
 import { authenticate, requireRole, requireSelfOrAdmin } from '../middlewares/auth';
 import { validateUserRole, validateUserStatus, validateUserUpdate } from '../validators/userValidator';
@@ -34,4 +34,4 @@ router.delete('/:id', requireSelfOrAdmin(), deleteUser);
 router.put('/:id/status', validateUserStatus, updateStatus);
 router.put('/:id/role', requireRole(UserRole.ADMIN), validateUserRole, updateRole);
 
-export default router; 
+export default router;

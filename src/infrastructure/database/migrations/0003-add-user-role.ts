@@ -2,7 +2,8 @@ import { Migration } from '../migrator';
 
 export const up: Migration = async ({ sequelize }) => {
   await sequelize.transaction(async (transaction) => {
-    await sequelize.query(`
+    await sequelize.query(
+      `
       DO $$
       BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'enum_users_role') THEN
@@ -11,7 +12,9 @@ export const up: Migration = async ({ sequelize }) => {
       END $$;
 
       ALTER TABLE users ADD COLUMN IF NOT EXISTS role enum_users_role NOT NULL DEFAULT 'user';
-    `, { transaction });
+    `,
+      { transaction },
+    );
   });
 };
 

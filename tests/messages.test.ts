@@ -63,7 +63,9 @@ describe('messages', () => {
 
   it('accepts only https media URLs', async () => {
     await alice.post('/messages', { chatId, content: 'x', type: 'image', mediaUrl: 'javascript:alert(1)' }).expect(400);
-    await alice.post('/messages', { chatId, content: 'x', type: 'image', mediaUrl: 'https://cdn.example.com/a.png' }).expect(201);
+    await alice
+      .post('/messages', { chatId, content: 'x', type: 'image', mediaUrl: 'https://cdn.example.com/a.png' })
+      .expect(201);
   });
 
   it('lets only the sender edit and delete a message', async () => {

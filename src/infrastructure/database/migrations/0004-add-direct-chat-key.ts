@@ -2,7 +2,8 @@ import { Migration } from '../migrator';
 
 export const up: Migration = async ({ sequelize }) => {
   await sequelize.transaction(async (transaction) => {
-    await sequelize.query(`
+    await sequelize.query(
+      `
       ALTER TABLE chats ADD COLUMN IF NOT EXISTS direct_key varchar(255);
 
       CREATE TEMP TABLE direct_chat_keys ON COMMIT DROP AS
@@ -45,7 +46,9 @@ export const up: Migration = async ({ sequelize }) => {
       WHERE c.id IN (SELECT keeper_id FROM direct_chat_keys WHERE id <> keeper_id);
 
       CREATE UNIQUE INDEX IF NOT EXISTS chats_direct_key_unique ON chats (direct_key) WHERE deleted_at IS NULL;
-    `, { transaction });
+    `,
+      { transaction },
+    );
   });
 };
 

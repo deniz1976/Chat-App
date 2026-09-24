@@ -46,4 +46,4 @@ const options: swaggerJsdoc.Options = {
   apis: [path.join(sourceRoot, 'api', 'controllers', '*.{ts,js}')],
 };
 
-export const specs = swaggerJsdoc(options); 
+export const specs = swaggerJsdoc(options);

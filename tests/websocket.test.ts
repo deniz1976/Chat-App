@@ -1,6 +1,14 @@
 import { sequelize } from '../src/infrastructure/database';
 import {
-  connect, connectAs, createDirectChat, createUser, setupTestDatabase, sleep, startServer, TestServer, TestUser,
+  connect,
+  connectAs,
+  createDirectChat,
+  createUser,
+  setupTestDatabase,
+  sleep,
+  startServer,
+  TestServer,
+  TestUser,
 } from './helpers';
 
 setupTestDatabase();
@@ -75,12 +83,12 @@ describe('WebSocket', () => {
       const bobTab2 = await connectAs(server, bob);
 
       await alice.post('/messages', { chatId, content: 'hello' }).expect(201);
-      await bobTab1.waitFor(e => e.type === 'NEW_MESSAGE' && e.payload.content === 'hello');
-      await bobTab2.waitFor(e => e.type === 'NEW_MESSAGE' && e.payload.content === 'hello');
+      await bobTab1.waitFor((e) => e.type === 'NEW_MESSAGE' && e.payload.content === 'hello');
+      await bobTab2.waitFor((e) => e.type === 'NEW_MESSAGE' && e.payload.content === 'hello');
 
       await bobTab1.close();
       await alice.post('/messages', { chatId, content: 'still there' }).expect(201);
-      await bobTab2.waitFor(e => e.type === 'NEW_MESSAGE' && e.payload.content === 'still there');
+      await bobTab2.waitFor((e) => e.type === 'NEW_MESSAGE' && e.payload.content === 'still there');
       await bobTab2.close();
     });
 
@@ -90,16 +98,18 @@ describe('WebSocket', () => {
       const bobSocket = await connectAs(server, bob);
 
       carolSocket.send({ type: 'TYPING', payload: { chatId, isTyping: true } });
-      await carolSocket.waitFor(e => e.type === 'ERROR' && e.payload.message === 'You are not a participant in this chat');
+      await carolSocket.waitFor(
+        (e) => e.type === 'ERROR' && e.payload.message === 'You are not a participant in this chat',
+      );
 
       carolSocket.send({ type: 'TYPING', payload: { chatId, isTyping: true, participantIds: [alice.id] } });
-      await carolSocket.waitFor(e => e.type === 'ERROR' && /participantIds/.test(e.payload.message));
+      await carolSocket.waitFor((e) => e.type === 'ERROR' && /participantIds/.test(e.payload.message));
 
       bobSocket.send({ type: 'TYPING', payload: { chatId, isTyping: true } });
-      await aliceSocket.waitFor(e => e.type === 'TYPING' && e.payload.userId === bob.id);
+      await aliceSocket.waitFor((e) => e.type === 'TYPING' && e.payload.userId === bob.id);
 
       await sleep(100);
-      expect(aliceSocket.events.filter(e => e.type === 'TYPING')).toHaveLength(1);
+      expect(aliceSocket.events.filter((e) => e.type === 'TYPING')).toHaveLength(1);
       await Promise.all([aliceSocket.close(), carolSocket.close(), bobSocket.close()]);
     });
 
@@ -110,10 +120,10 @@ describe('WebSocket', () => {
 
       bobSocket.send({ type: 'READ_RECEIPT', payload: { chatId, messageId: message.id } });
       bobSocket.send({ type: 'READ_RECEIPT', payload: { chatId, messageId: message.id } });
-      await aliceSocket.waitFor(e => e.type === 'READ_RECEIPT' && e.payload.readerId === bob.id);
+      await aliceSocket.waitFor((e) => e.type === 'READ_RECEIPT' && e.payload.readerId === bob.id);
       await sleep(100);
 
-      expect(aliceSocket.events.filter(e => e.type === 'READ_RECEIPT')).toHaveLength(1);
+      expect(aliceSocket.events.filter((e) => e.type === 'READ_RECEIPT')).toHaveLength(1);
       expect((await alice.get(`/messages/${message.id}`)).body.readBy).toEqual([alice.id, bob.id]);
       await Promise.all([aliceSocket.close(), bobSocket.close()]);
     });
@@ -124,16 +134,16 @@ describe('WebSocket', () => {
       const bobSocket = await connectAs(server, bob);
 
       bobSocket.send({ type: 'READ_RECEIPT', payload: { chatId: otherChatId, messageId: message.id } });
-      await bobSocket.waitFor(e => e.type === 'ERROR' && e.payload.message === 'Message not found in this chat');
+      await bobSocket.waitFor((e) => e.type === 'ERROR' && e.payload.message === 'Message not found in this chat');
       await bobSocket.close();
     });
 
     it('reports malformed and unsupported messages', async () => {
       const socket = await connectAs(server, alice);
       socket.send('not json');
-      await socket.waitFor(e => e.type === 'ERROR' && e.payload.message === 'Invalid message format');
+      await socket.waitFor((e) => e.type === 'ERROR' && e.payload.message === 'Invalid message format');
       socket.send({ type: 'UNKNOWN', payload: {} });
-      await socket.waitFor(e => e.type === 'ERROR' && /Unsupported message type/.test(e.payload.message));
+      await socket.waitFor((e) => e.type === 'ERROR' && /Unsupported message type/.test(e.payload.message));
       await socket.close();
     });
   });
@@ -144,7 +154,9 @@ describe('WebSocket', () => {
       const carolSocket = await connectAs(server, carol);
 
       const aliceTab1 = await connectAs(server, alice);
-      await bobSocket.waitFor(e => e.type === 'USER_STATUS' && e.payload.userId === alice.id && e.payload.status === 'online');
+      await bobSocket.waitFor(
+        (e) => e.type === 'USER_STATUS' && e.payload.userId === alice.id && e.payload.status === 'online',
+      );
       await eventually(async () => expect(await statusOf(alice)).toBe('online'));
 
       const aliceTab2 = await connectAs(server, alice);
@@ -153,18 +165,22 @@ describe('WebSocket', () => {
       expect(await statusOf(alice)).toBe('online');
 
       await aliceTab2.close();
-      await bobSocket.waitFor(e => e.type === 'USER_STATUS' && e.payload.userId === alice.id && e.payload.status === 'offline');
+      await bobSocket.waitFor(
+        (e) => e.type === 'USER_STATUS' && e.payload.userId === alice.id && e.payload.status === 'offline',
+      );
       await eventually(async () => expect(await statusOf(alice)).toBe('offline'));
 
-      expect(carolSocket.events.filter(e => e.type === 'USER_STATUS' && e.payload.userId === alice.id)).toHaveLength(0);
-      expect(bobSocket.events.filter(e => e.type === 'USER_STATUS' && e.payload.userId === alice.id)).toHaveLength(2);
+      expect(carolSocket.events.filter((e) => e.type === 'USER_STATUS' && e.payload.userId === alice.id)).toHaveLength(
+        0,
+      );
+      expect(bobSocket.events.filter((e) => e.type === 'USER_STATUS' && e.payload.userId === alice.id)).toHaveLength(2);
       await Promise.all([bobSocket.close(), carolSocket.close()]);
     });
 
     it('broadcasts away status set through the API', async () => {
       const bobSocket = await connectAs(server, bob);
       await alice.put(`/users/${alice.id}/status`, { status: 'away' }).expect(200);
-      await bobSocket.waitFor(e => e.type === 'USER_STATUS' && e.payload.status === 'away');
+      await bobSocket.waitFor((e) => e.type === 'USER_STATUS' && e.payload.status === 'away');
       await bobSocket.close();
     });
   });

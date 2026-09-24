@@ -39,9 +39,7 @@ const serializeErrors = winston.format((info) => {
 const FORMATTED_KEYS = new Set(['level', 'message', 'timestamp']);
 
 const formatMetadata = (info: winston.Logform.TransformableInfo): string => {
-  const metadata = Object.fromEntries(
-    Object.entries(info).filter(([key]) => !FORMATTED_KEYS.has(key)),
-  );
+  const metadata = Object.fromEntries(Object.entries(info).filter(([key]) => !FORMATTED_KEYS.has(key)));
   return Object.keys(metadata).length > 0 ? ` ${JSON.stringify(metadata)}` : '';
 };
 
@@ -49,9 +47,7 @@ const formatConsole = winston.format.combine(
   serializeErrors(),
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   winston.format.colorize({ level: true }),
-  winston.format.printf(
-    (info) => `${info.timestamp} ${info.level}: ${info.message}${formatMetadata(info)}`,
-  ),
+  winston.format.printf((info) => `${info.timestamp} ${info.level}: ${info.message}${formatMetadata(info)}`),
 );
 
 const formatFile = winston.format.combine(
@@ -79,4 +75,4 @@ export const logger = winston.createLogger({
       format: formatFile,
     }),
   ],
-}); 
+});
