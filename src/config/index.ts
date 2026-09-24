@@ -43,6 +43,7 @@ const loadJwtSecret = (): string => {
 export interface Config {
   port: number;
   nodeEnv: string;
+  logLevel: string;
   trustProxy: boolean | number | string;
   corsOrigins: string[];
   db: {
@@ -70,6 +71,7 @@ export interface Config {
 export const config: Config = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
+  logLevel: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
   trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
   corsOrigins: parseList(process.env.CORS_ORIGINS),
   db: {

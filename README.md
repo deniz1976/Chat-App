@@ -99,6 +99,7 @@ public/                   # Static frontend files (HTML, CSS, JavaScript).
     # Server Configuration
     PORT=3000
     NODE_ENV=development # or production
+    LOG_LEVEL=debug # error, warn, info, http or debug. Defaults to info in production and debug otherwise
     CORS_ORIGINS= # Comma-separated list of additional allowed origins. Leave empty when the frontend is served by this server
     TRUST_PROXY=false # Set to the number of reverse proxies in front of the app (e.g., 1) so rate limiting uses the client IP
 
@@ -214,6 +215,16 @@ The following message types are handled by the server (sent from client or broad
 *   `CHAT_CREATED`: Potentially broadcasted when a new chat is created (verify specific implementation).
 *   `ERROR`: Sent by the server to a specific client if an error occurs processing their message (e.g., invalid format).
     *   Payload: `{ message: string }`
+
+## Testing
+
+The test suite in `tests/` runs against a real PostgreSQL server. It creates (and recreates on every run) the `chat_app_test` and `chat_app_test_migrations` databases, so point it at a server where those names are free:
+
+```bash
+DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres npm test
+```
+
+Set `TEST_DB_NAME` to use a different database name. The suite covers authentication, authorization, chats, messages, WebSocket events and presence, uploads and migrations. It runs on every push and pull request through GitHub Actions.
 
 ## Database Migrations
 

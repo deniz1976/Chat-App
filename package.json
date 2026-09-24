@@ -11,7 +11,8 @@
     "migrate": "node dist/infrastructure/database/migrate.js up",
     "migrate:undo": "node dist/infrastructure/database/migrate.js down",
     "migrate:status": "node dist/infrastructure/database/migrate.js status",
-    "migrate:dev": "ts-node src/infrastructure/database/migrate.ts up"
+    "migrate:dev": "ts-node src/infrastructure/database/migrate.ts up",
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -58,13 +59,19 @@
     "@types/bcrypt": "^5.0.2",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.6",
+    "@types/jest": "^29.5.14",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/multer": "^1.4.12",
     "@types/node": "^22.20.4",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^6.0.3",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
     "@types/ws": "^8.18.1",
+    "jest": "^29.7.0",
     "nodemon": "^3.1.14",
+    "supertest": "^7.3.0",
+    "ts-jest": "^29.4.13",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },

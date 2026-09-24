@@ -1,4 +1,5 @@
 import rateLimit, { Options } from 'express-rate-limit';
+import { config } from '../../config';
 
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 
@@ -7,6 +8,7 @@ const baseOptions: Partial<Options> = {
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   message: { message: 'Too many requests, please try again later.' },
+  skip: () => config.nodeEnv === 'test',
 };
 
 export const apiRateLimiter = rateLimit({
