@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { formatBytes } from '../lib/format';
 import { useChat } from '../state/ChatProvider';
+import type { ThreadMessage } from '../state/store';
+import { captionOf } from './MessageItem';
 
 const EMOJIS = [
   '😀',
@@ -39,14 +41,25 @@ const EMOJIS = [
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
+export type ComposerMode =
+  { kind: 'new' } | { kind: 'reply'; message: ThreadMessage } | { kind: 'edit'; message: ThreadMessage };
+
+interface ComposerProps {
+  chatId: string;
+  mode: ComposerMode;
+  onModeDone(): void;
+}
+
 interface Attachment {
   file: File;
   preview: string;
 }
 
-export const Composer = ({ chatId }: { chatId: string }) => {
-  const { actions } = useChat();
-  const [text, setText] = useState('');
+export const Composer = ({ chatId, mode, onModeDone }: ComposerProps) => {
+  const { state, actions } = useChat();
+  const editing = mode.kind === 'edit' ? mode.message : null;
+  const replyTo = mode.kind === 'reply' ? mode.message : undefined;
+  const [text, setText] = useState(editing?.content ?? '');
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -70,29 +83,45 @@ export const Composer = ({ chatId }: { chatId: string }) => {
     }
   }, [text]);
 
-  const canSend = text.trim().length > 0 || attachment !== null;
+  const canSend = editing
+    ? text.trim().length > 0 && text.trim() !== editing.content
+    : text.trim().length > 0 || attachment !== null;
 
   const send = (event?: FormEvent) => {
     event?.preventDefault();
     if (!canSend) {
       return;
     }
+    if (editing) {
+      actions
+        .editMessage(editing, text.trim())
+        .then(onModeDone)
+        .catch(() => setError('Could not save the edit. Try again.'));
+      return;
+    }
     if (attachment) {
-      actions.sendImage(chatId, attachment.file, text.trim());
+      actions.sendImage(chatId, attachment.file, text.trim(), replyTo);
       setAttachment(null);
     } else {
-      actions.sendText(chatId, text.trim());
+      actions.sendText(chatId, text.trim(), replyTo);
     }
     setText('');
     setEmojiOpen(false);
+    onModeDone();
     textarea.current?.focus();
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
       send(event);
+    } else if (event.key === 'Escape' && mode.kind !== 'new') {
+      event.preventDefault();
+      onModeDone();
     }
   };
+
+  const modeTarget = mode.kind === 'new' ? null : mode.message;
+  const modeSender = modeTarget ? (state.users[modeTarget.senderId]?.displayName ?? 'Unknown') : '';
 
   const pickFile = (file: File | undefined) => {
     setError(null);
@@ -132,6 +161,17 @@ export const Composer = ({ chatId }: { chatId: string }) => {
           ))}
         </div>
       )}
+      {modeTarget && (
+        <div className="composer-mode">
+          <span className="composer-mode-text">
+            <span className="label">{mode.kind === 'edit' ? 'Editing your message' : `Replying to ${modeSender}`}</span>
+            <span>{captionOf(modeTarget) || 'Photo'}</span>
+          </span>
+          <button type="button" className="tool" onClick={onModeDone} aria-label="Cancel">
+            ✕
+          </button>
+        </div>
+      )}
       {attachment && (
         <div className="attachment">
           <img src={attachment.preview} alt="" />
@@ -150,7 +190,13 @@ export const Composer = ({ chatId }: { chatId: string }) => {
         </p>
       )}
       <div className="composer-row">
-        <button type="button" className="tool" onClick={() => fileInput.current?.click()} aria-label="Attach an image">
+        <button
+          type="button"
+          className="tool"
+          onClick={() => fileInput.current?.click()}
+          aria-label="Attach an image"
+          disabled={!!editing}
+        >
           +
         </button>
         <input
@@ -181,7 +227,7 @@ export const Composer = ({ chatId }: { chatId: string }) => {
           id="composer-text"
           rows={1}
           autoFocus
-          placeholder={attachment ? 'Add a caption' : 'Type a message'}
+          placeholder={editing ? 'Edit your message' : attachment ? 'Add a caption' : 'Type a message'}
           value={text}
           onChange={(event) => {
             setText(event.target.value);
@@ -194,7 +240,7 @@ export const Composer = ({ chatId }: { chatId: string }) => {
           maxLength={4000}
         />
         <button type="submit" className="key send" disabled={!canSend}>
-          Send
+          {editing ? 'Save' : 'Send'}
         </button>
       </div>
     </form>

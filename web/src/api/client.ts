@@ -73,6 +73,8 @@ export const api = {
   messages: (chatId: string, before?: string, limit = 50) =>
     request<Message[]>('GET', `/messages/chat/${chatId}?limit=${limit}${before ? `&before=${before}` : ''}`),
   sendMessage: (input: SendMessageInput) => request<Message>('POST', '/messages', input),
+  updateMessage: (id: string, content: string) => request<Message>('PUT', `/messages/${id}`, { content }),
+  deleteMessage: (id: string) => request<void>('DELETE', `/messages/${id}`),
 
   uploadImage: (file: File) => request<UploadedFile>('POST', '/upload/image', fileForm(file)),
 };

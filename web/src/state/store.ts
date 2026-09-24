@@ -12,6 +12,7 @@ export interface Thread {
   hasMore: boolean;
   loaded: boolean;
   loading: boolean;
+  firstUnreadId: string | null;
 }
 
 export interface State {
@@ -59,7 +60,10 @@ export const initialState = (me: Profile): State => ({
   connection: 'connecting',
 });
 
-const emptyThread: Thread = { items: [], hasMore: true, loaded: false, loading: false };
+const emptyThread: Thread = { items: [], hasMore: true, loaded: false, loading: false, firstUnreadId: null };
+
+const findFirstUnread = (items: ThreadMessage[], meId: string): string | null =>
+  items.find((item) => item.senderId !== meId && !item.readBy.includes(meId))?.id ?? null;
 
 const toLastMessage = (message: Message): LastMessage => ({
   id: message.id,
@@ -137,8 +141,15 @@ export const reducer = (state: State, action: Action): State => {
       return { ...state, chats, activeChatId: state.activeChatId === action.chatId ? null : state.activeChatId };
     }
 
-    case 'chatSelected':
-      return { ...state, activeChatId: action.chatId };
+    case 'chatSelected': {
+      const next = { ...state, activeChatId: action.chatId };
+      return action.chatId && state.threads[action.chatId]?.loaded
+        ? updateThread(next, action.chatId, (thread) => ({
+            ...thread,
+            firstUnreadId: findFirstUnread(thread.items, state.me.id),
+          }))
+        : next;
+    }
 
     case 'chatReadLocally':
       return updateChat(state, action.chatId, (chat) => ({ ...chat, unreadCount: 0 }));
@@ -147,12 +158,16 @@ export const reducer = (state: State, action: Action): State => {
       return updateThread(state, action.chatId, (thread) => ({ ...thread, loading: true }));
 
     case 'threadLoaded':
-      return updateThread(state, action.chatId, (thread) => ({
-        items: upsertMessages(thread.items, action.messages),
-        hasMore: action.older || !thread.loaded ? action.hasMore : thread.hasMore,
-        loaded: true,
-        loading: false,
-      }));
+      return updateThread(state, action.chatId, (thread) => {
+        const items = upsertMessages(thread.items, action.messages);
+        return {
+          items,
+          hasMore: action.older || !thread.loaded ? action.hasMore : thread.hasMore,
+          loaded: true,
+          loading: false,
+          firstUnreadId: thread.loaded ? thread.firstUnreadId : findFirstUnread(items, state.me.id),
+        };
+      });
 
     case 'threadFailed':
       return updateThread(state, action.chatId, (thread) => ({ ...thread, loading: false }));
@@ -210,7 +225,15 @@ export const reducer = (state: State, action: Action): State => {
       const { message } = action;
       const next = updateThread(state, message.chatId, (thread) => ({
         ...thread,
-        items: thread.items.map((item) => (item.id === message.id ? { ...item, ...message } : item)),
+        items: thread.items.map((item) => {
+          if (item.id === message.id) {
+            return { ...item, ...message };
+          }
+          if (item.replyTo?.id === message.id) {
+            return { ...item, replyTo: { ...item.replyTo, content: message.content } };
+          }
+          return item;
+        }),
       }));
       return action.isLastMessage
         ? updateChat(next, message.chatId, (chat) => ({ ...chat, lastMessage: toLastMessage(message) }))
@@ -220,7 +243,9 @@ export const reducer = (state: State, action: Action): State => {
     case 'messageDeleted': {
       const next = updateThread(state, action.chatId, (thread) => ({
         ...thread,
-        items: thread.items.filter((item) => item.id !== action.messageId),
+        items: thread.items
+          .filter((item) => item.id !== action.messageId)
+          .map((item) => (item.replyTo?.id === action.messageId ? { ...item, replyTo: null } : item)),
       }));
       return action.lastMessage === undefined
         ? next

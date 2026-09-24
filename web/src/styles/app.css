@@ -790,6 +790,7 @@ img {
 }
 
 .msg-card {
+  margin: 0;
   max-width: 100%;
   background: var(--panel);
   border-left: 4px solid var(--ink);
@@ -857,6 +858,121 @@ img {
   gap: 8px;
   padding: 8px 0 2px;
   min-height: 28px;
+}
+
+.msg-quote {
+  display: grid;
+  gap: 2px;
+  max-width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-left: 3px solid var(--line);
+  padding: 2px 10px;
+  color: var(--dim);
+}
+
+.msg-mine .msg-quote {
+  border-left: 0;
+  border-right: 3px solid var(--cord);
+  text-align: right;
+}
+
+.msg-quote-text {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 42ch;
+}
+
+.msg-more {
+  opacity: 0;
+  font-size: 14px !important;
+  text-decoration: none !important;
+  padding: 0 4px !important;
+  line-height: 1;
+}
+
+.msg:hover .msg-more,
+.msg:focus-within .msg-more,
+.msg-more[aria-expanded='true'] {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .msg-more {
+    opacity: 1;
+  }
+}
+
+.msg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font: 400 11px/1 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.msg-actions button {
+  border: 2px solid var(--line);
+  background: var(--face);
+  padding: 6px 10px;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.msg-actions button.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.msg.highlighted .msg-card,
+.msg.highlighted .msg-image img {
+  outline: 3px solid var(--lamp);
+  outline-offset: 2px;
+}
+
+.unread-rule {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 2px;
+  font: 600 11px/1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--danger);
+}
+
+.unread-rule::before,
+.unread-rule::after {
+  content: '';
+  flex: 1;
+  border-top: 2px solid var(--danger);
+}
+
+.composer-mode {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--face);
+  border-left: 4px solid var(--cord);
+  padding: 6px 6px 6px 12px;
+}
+
+.composer-mode-text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+
+.composer-mode-text span:last-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---------- composer ---------- */

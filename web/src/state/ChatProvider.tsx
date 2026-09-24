@@ -21,8 +21,10 @@ const TYPING_IDLE_MS = 4000;
 export interface ChatActions {
   selectChat(chatId: string | null): void;
   loadOlder(chatId: string): Promise<void>;
-  sendText(chatId: string, content: string): void;
-  sendImage(chatId: string, file: File, caption: string): void;
+  sendText(chatId: string, content: string, replyTo?: ThreadMessage): void;
+  sendImage(chatId: string, file: File, caption: string, replyTo?: ThreadMessage): void;
+  editMessage(message: ThreadMessage, content: string): Promise<void>;
+  deleteMessage(message: ThreadMessage): Promise<void>;
   retry(message: ThreadMessage): void;
   discard(message: ThreadMessage): void;
   notifyTyping(chatId: string): void;
@@ -69,7 +71,22 @@ export const ChatProvider = ({ me, onSignedOut, children }: ChatProviderProps) =
 
   const realtime = useMemo(() => new RealtimeClient(), []);
   const typingSignals = useRef(new Map<string, { lastSent: number; idleTimer?: number }>());
-  const readRequests = useRef(new Set<string>());
+  const readRequests = useRef(new Map<string, 'inflight' | 'again'>());
+
+  const markChatRead = useCallback((chatId: string) => {
+    if (readRequests.current.has(chatId)) {
+      readRequests.current.set(chatId, 'again');
+      return;
+    }
+    dispatch({ type: 'chatReadLocally', chatId });
+    void (async () => {
+      do {
+        readRequests.current.set(chatId, 'inflight');
+        await api.markChatAsRead(chatId).catch(() => undefined);
+      } while (readRequests.current.get(chatId) === 'again');
+      readRequests.current.delete(chatId);
+    })();
+  }, []);
 
   const refreshChat = useCallback(async (chatId: string) => {
     try {
@@ -106,12 +123,12 @@ export const ChatProvider = ({ me, onSignedOut, children }: ChatProviderProps) =
             void refreshChat(message.chatId);
             return;
           }
+          const fromOthers = message.senderId !== current.me.id;
           const watching = current.activeChatId === message.chatId && isVisible();
-          dispatch({
-            type: 'messageReceived',
-            message,
-            countAsUnread: message.senderId !== current.me.id && !watching,
-          });
+          dispatch({ type: 'messageReceived', message, countAsUnread: fromOthers && !watching });
+          if (fromOthers && watching) {
+            markChatRead(message.chatId);
+          }
           return;
         }
         case 'MESSAGE_UPDATED':
@@ -146,7 +163,7 @@ export const ChatProvider = ({ me, onSignedOut, children }: ChatProviderProps) =
           return;
       }
     },
-    [refreshChat],
+    [markChatRead, refreshChat],
   );
 
   useEffect(() => {
@@ -186,20 +203,14 @@ export const ChatProvider = ({ me, onSignedOut, children }: ChatProviderProps) =
     const markRead = () => {
       const chatId = stateRef.current.activeChatId;
       const chat = chatId ? stateRef.current.chats[chatId] : undefined;
-      if (!chat || chat.unreadCount === 0 || !isVisible() || readRequests.current.has(chat.id)) {
-        return;
+      if (chat && chat.unreadCount > 0 && isVisible()) {
+        markChatRead(chat.id);
       }
-      readRequests.current.add(chat.id);
-      dispatch({ type: 'chatReadLocally', chatId: chat.id });
-      api
-        .markChatAsRead(chat.id)
-        .catch(() => undefined)
-        .finally(() => readRequests.current.delete(chat.id));
     };
     markRead();
     document.addEventListener('visibilitychange', markRead);
     return () => document.removeEventListener('visibilitychange', markRead);
-  }, [state.activeChatId, activeUnread]);
+  }, [state.activeChatId, activeUnread, markChatRead]);
 
   const totalUnread = Object.values(state.chats).reduce((sum, chat) => sum + chat.unreadCount, 0);
   useEffect(() => {
@@ -219,6 +230,7 @@ export const ChatProvider = ({ me, onSignedOut, children }: ChatProviderProps) =
         content: message.content,
         type: message.type,
         mediaUrl,
+        replyToId: message.replyToId ?? undefined,
       });
       pendingFiles.current.delete(message.id);
       dispatch({ type: 'messageSent', tempId: message.id, message: sent });
@@ -240,7 +252,13 @@ export const ChatProvider = ({ me, onSignedOut, children }: ChatProviderProps) =
   );
 
   const actions = useMemo<ChatActions>(() => {
-    const draft = (chatId: string, content: string, type: Message['type'], mediaUrl: string | null): ThreadMessage => {
+    const draft = (
+      chatId: string,
+      content: string,
+      type: Message['type'],
+      mediaUrl: string | null,
+      replyTo?: ThreadMessage,
+    ): ThreadMessage => {
       const now = new Date().toISOString();
       const me = stateRef.current.me;
       return {
@@ -250,8 +268,18 @@ export const ChatProvider = ({ me, onSignedOut, children }: ChatProviderProps) =
         content,
         type,
         mediaUrl,
-        replyToId: null,
+        replyToId: replyTo?.id ?? null,
+        replyTo: replyTo
+          ? {
+              id: replyTo.id,
+              senderId: replyTo.senderId,
+              content: replyTo.content,
+              type: replyTo.type,
+              mediaUrl: replyTo.mediaUrl,
+            }
+          : null,
         readBy: [me.id],
+        editedAt: null,
         createdAt: now,
         updatedAt: now,
         sender: { id: me.id, username: me.username, displayName: me.displayName, profileImage: me.profileImage },
@@ -282,16 +310,16 @@ export const ChatProvider = ({ me, onSignedOut, children }: ChatProviderProps) =
         }
       },
 
-      sendText(chatId, content) {
+      sendText(chatId, content, replyTo) {
         stopTyping(chatId);
-        const message = draft(chatId, content, 'text', null);
+        const message = draft(chatId, content, 'text', null, replyTo);
         dispatch({ type: 'messageSending', message });
         deliver(message);
       },
 
-      sendImage(chatId, file, caption) {
+      sendImage(chatId, file, caption, replyTo) {
         stopTyping(chatId);
-        const message = draft(chatId, caption || file.name, 'image', URL.createObjectURL(file));
+        const message = draft(chatId, caption || file.name, 'image', URL.createObjectURL(file), replyTo);
         pendingFiles.current.set(message.id, file);
         dispatch({ type: 'messageSending', message });
         deliver({ ...message, mediaUrl: null }, file);
@@ -312,6 +340,17 @@ export const ChatProvider = ({ me, onSignedOut, children }: ChatProviderProps) =
       discard(message) {
         pendingFiles.current.delete(message.id);
         dispatch({ type: 'messageDiscarded', tempId: message.id, chatId: message.chatId });
+      },
+
+      async editMessage(message, content) {
+        const updated = await api.updateMessage(message.id, content);
+        const chat = stateRef.current.chats[updated.chatId];
+        dispatch({ type: 'messageUpdated', message: updated, isLastMessage: chat?.lastMessage?.id === updated.id });
+      },
+
+      async deleteMessage(message) {
+        await api.deleteMessage(message.id);
+        dispatch({ type: 'messageDeleted', chatId: message.chatId, messageId: message.id });
       },
 
       notifyTyping(chatId) {

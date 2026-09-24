@@ -1,19 +1,21 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
-import type { Chat, User } from '../api/types';
-import { formatDay, formatTime, isSameDay } from '../lib/format';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { Chat, MessageSender, User } from '../api/types';
+import { formatDay, isSameDay } from '../lib/format';
 import { useChat } from '../state/ChatProvider';
 import type { Thread, ThreadMessage } from '../state/store';
-import { Avatar } from './Avatar';
+import { MessageItem } from './MessageItem';
 
 const GROUP_WINDOW_MS = 5 * 60 * 1000;
 const STICK_TO_BOTTOM_PX = 120;
-const IMAGE_FILE_NAME = /\.(png|jpe?g|gif|webp)$/i;
 
 interface MessageListProps {
   chat: Chat;
   thread: Thread | undefined;
   typingUserIds: string[];
+  firstUnreadId: string | null;
   onOpenImage(url: string): void;
+  onReply(message: ThreadMessage): void;
+  onEdit(message: ThreadMessage): void;
 }
 
 const isContinuation = (message: ThreadMessage, previous: ThreadMessage | undefined): boolean =>
@@ -22,15 +24,15 @@ const isContinuation = (message: ThreadMessage, previous: ThreadMessage | undefi
   isSameDay(previous.createdAt, message.createdAt) &&
   new Date(message.createdAt).getTime() - new Date(previous.createdAt).getTime() < GROUP_WINDOW_MS;
 
-const deliveryText = (message: ThreadMessage, chat: Chat, meId: string): string => {
-  const readers = message.readBy.filter((id) => id !== meId).length;
-  if (readers === 0) {
-    return 'Sent';
-  }
-  return chat.type === 'group' ? `Read by ${readers}` : 'Read';
-};
-
-export const MessageList = ({ chat, thread, typingUserIds, onOpenImage }: MessageListProps) => {
+export const MessageList = ({
+  chat,
+  thread,
+  typingUserIds,
+  firstUnreadId,
+  onOpenImage,
+  onReply,
+  onEdit,
+}: MessageListProps) => {
   const { state, actions } = useChat();
   const meId = state.me.id;
   const container = useRef<HTMLDivElement>(null);
@@ -39,6 +41,7 @@ export const MessageList = ({ chat, thread, typingUserIds, onOpenImage }: Messag
   const firstId = useRef<string | undefined>(undefined);
   const lastId = useRef<string | undefined>(undefined);
   const items = useMemo(() => thread?.items ?? [], [thread?.items]);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   useLayoutEffect(() => {
     const element = container.current;
@@ -85,8 +88,18 @@ export const MessageList = ({ chat, thread, typingUserIds, onOpenImage }: Messag
   }, [actions, chat.id, thread?.hasMore, thread?.loaded]);
 
   const typingNames = typingUserIds.map((id) => state.users[id]?.displayName.split(' ')[0]).filter(Boolean);
-  const senderOf = (message: ThreadMessage): Pick<User, 'displayName' | 'profileImage'> =>
-    state.users[message.senderId] ?? message.sender ?? { displayName: 'Unknown', profileImage: null };
+  const senderOf = (senderId: string, fallback?: MessageSender): Pick<User, 'displayName' | 'profileImage'> =>
+    state.users[senderId] ?? fallback ?? { displayName: 'Unknown', profileImage: null };
+
+  const jumpTo = (messageId: string) => {
+    const target = container.current?.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`);
+    if (!target) {
+      return;
+    }
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    setHighlightedId(messageId);
+    window.setTimeout(() => setHighlightedId((current) => (current === messageId ? null : current)), 1600);
+  };
 
   return (
     <div className="messages" ref={container} role="log" aria-label="Messages" aria-live="polite">
@@ -101,59 +114,25 @@ export const MessageList = ({ chat, thread, typingUserIds, onOpenImage }: Messag
 
       {items.map((message, index) => {
         const previous = items[index - 1];
-        const mine = message.senderId === meId;
-        const continued = isContinuation(message, previous);
         const newDay = !previous || !isSameDay(previous.createdAt, message.createdAt);
-        const sender = senderOf(message);
-        const caption = message.type === 'image' && IMAGE_FILE_NAME.test(message.content) ? '' : message.content;
-
         return (
-          <div key={message.id} style={{ display: 'contents' }}>
+          <Fragment key={message.id}>
             {newDay && <div className="day-rule">{formatDay(message.createdAt)}</div>}
-            <div
-              className={`msg${mine ? ' msg-mine' : ''}${continued && !newDay ? ' continued' : ''}${
-                message.localStatus === 'sending' ? ' sending' : ''
-              }`}
-            >
-              {!mine &&
-                (continued && !newDay ? (
-                  <span />
-                ) : (
-                  <Avatar name={sender.displayName} src={sender.profileImage} size={32} />
-                ))}
-              <div className="msg-body">
-                {!mine && chat.type === 'group' && !(continued && !newDay) && (
-                  <span className="plate msg-sender">{sender.displayName}</span>
-                )}
-                {message.type === 'image' && message.mediaUrl && (
-                  <button type="button" className="msg-image" onClick={() => onOpenImage(message.mediaUrl!)}>
-                    <img src={message.mediaUrl} alt={caption || 'Shared image'} loading="lazy" />
-                  </button>
-                )}
-                {caption && (
-                  <p className="msg-card" style={{ margin: 0 }}>
-                    {caption}
-                  </p>
-                )}
-                <span className={`msg-meta${message.localStatus === 'failed' ? ' failed' : ''}`}>
-                  <time dateTime={message.createdAt}>{formatTime(message.createdAt)}</time>
-                  {mine && message.localStatus === 'sending' && <span>Sending</span>}
-                  {mine && message.localStatus === 'failed' && (
-                    <>
-                      <span>Not sent</span>
-                      <button type="button" onClick={() => actions.retry(message)}>
-                        Retry
-                      </button>
-                      <button type="button" onClick={() => actions.discard(message)}>
-                        Discard
-                      </button>
-                    </>
-                  )}
-                  {mine && !message.localStatus && <span>{deliveryText(message, chat, meId)}</span>}
-                </span>
-              </div>
-            </div>
-          </div>
+            {message.id === firstUnreadId && <div className="unread-rule">New messages</div>}
+            <MessageItem
+              message={message}
+              chat={chat}
+              sender={senderOf(message.senderId, message.sender)}
+              replySender={message.replyTo ? senderOf(message.replyTo.senderId) : undefined}
+              mine={message.senderId === meId}
+              continued={!newDay && message.id !== firstUnreadId && isContinuation(message, previous)}
+              highlighted={message.id === highlightedId}
+              onReply={onReply}
+              onEdit={onEdit}
+              onOpenImage={onOpenImage}
+              onJumpTo={jumpTo}
+            />
+          </Fragment>
         );
       })}
 

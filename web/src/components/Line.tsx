@@ -1,10 +1,11 @@
-import { forwardRef, type CSSProperties } from 'react';
+import { forwardRef, useState, type CSSProperties, type ForwardedRef } from 'react';
 import type { Chat } from '../api/types';
 import { cordFor } from '../lib/cords';
 import { chatTitle, otherMember, presenceText } from '../lib/format';
 import { useChat } from '../state/ChatProvider';
+import type { ThreadMessage } from '../state/store';
 import { Avatar } from './Avatar';
-import { Composer } from './Composer';
+import { Composer, type ComposerMode } from './Composer';
 import { MessageList } from './MessageList';
 
 interface LineProps {
@@ -18,9 +19,23 @@ const groupPresence = (chat: Chat, meId: string, onlineIds: Set<string>): string
   return `${chat.participants.length} members · ${online} online`;
 };
 
-export const Line = forwardRef<HTMLSpanElement, LineProps>(({ onBack, onOpenImage, onNewLine }, socketRef) => {
+export const Line = forwardRef<HTMLSpanElement, LineProps>((props, socketRef) => {
   const { state } = useChat();
+  return <LineView key={state.activeChatId ?? 'idle'} {...props} socketRef={socketRef} />;
+});
+
+Line.displayName = 'Line';
+
+const LineView = ({
+  onBack,
+  onOpenImage,
+  onNewLine,
+  socketRef,
+}: LineProps & { socketRef: ForwardedRef<HTMLSpanElement> }) => {
+  const { state } = useChat();
+  const [mode, setMode] = useState<ComposerMode>({ kind: 'new' });
   const chat = state.activeChatId ? state.chats[state.activeChatId] : undefined;
+  const thread = chat ? state.threads[chat.id] : undefined;
 
   if (!chat) {
     return (
@@ -87,13 +102,19 @@ export const Line = forwardRef<HTMLSpanElement, LineProps>(({ onBack, onOpenImag
       </header>
       <MessageList
         chat={chat}
-        thread={state.threads[chat.id]}
+        thread={thread}
         typingUserIds={typingUserIds}
+        firstUnreadId={thread?.firstUnreadId ?? null}
         onOpenImage={onOpenImage}
+        onReply={(message: ThreadMessage) => setMode({ kind: 'reply', message })}
+        onEdit={(message: ThreadMessage) => setMode({ kind: 'edit', message })}
       />
-      <Composer key={chat.id} chatId={chat.id} />
+      <Composer
+        key={mode.kind === 'edit' ? `edit-${mode.message.id}` : 'compose'}
+        chatId={chat.id}
+        mode={mode}
+        onModeDone={() => setMode({ kind: 'new' })}
+      />
     </main>
   );
-});
-
-Line.displayName = 'Line';
+};

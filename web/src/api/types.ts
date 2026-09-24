@@ -24,6 +24,14 @@ export interface MessageSender {
   profileImage: string | null;
 }
 
+export interface ReplySummary {
+  id: string;
+  senderId: string;
+  content: string;
+  type: MessageType;
+  mediaUrl: string | null;
+}
+
 export interface Message {
   id: string;
   chatId: string;
@@ -33,9 +41,11 @@ export interface Message {
   mediaUrl: string | null;
   replyToId: string | null;
   readBy: string[];
+  editedAt: string | null;
   createdAt: string;
   updatedAt: string;
   sender?: MessageSender;
+  replyTo?: ReplySummary | null;
 }
 
 export interface LastMessage {
