@@ -28,18 +28,18 @@ export interface UserAttributes {
 export interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'status' | 'role' | 'lastSeen' | 'profileImage' | 'createdAt' | 'updatedAt' | 'deletedAt'> {}
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
-  public id!: string;
-  public username!: string;
-  public email!: string;
-  public password!: string;
-  public displayName!: string;
-  public profileImage!: string | null;
-  public status!: UserStatus;
-  public role!: UserRole;
-  public lastSeen!: Date;
-  public createdAt!: Date;
-  public updatedAt!: Date;
-  public deletedAt!: Date | null;
+  declare id: string;
+  declare username: string;
+  declare email: string;
+  declare password: string;
+  declare displayName: string;
+  declare profileImage: string | null;
+  declare status: UserStatus;
+  declare role: UserRole;
+  declare lastSeen: Date;
+  declare createdAt: Date;
+  declare updatedAt: Date;
+  declare deletedAt: Date | null;
 
   public async comparePassword(password: string): Promise<boolean> {
     return bcrypt.compare(password, this.password);

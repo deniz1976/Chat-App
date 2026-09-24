@@ -25,23 +25,23 @@ export interface ChatAttributes {
 export interface ChatCreationAttributes extends Optional<ChatAttributes, 'id' | 'name' | 'avatar' | 'lastMessageId' | 'admins' | 'directKey' | 'createdAt' | 'updatedAt' | 'deletedAt'> {}
 
 export class Chat extends Model<ChatAttributes, ChatCreationAttributes> implements ChatAttributes {
-  public id!: string;
-  public name!: string | null;
-  public type!: ChatType;
-  public avatar!: string | null;
-  public lastMessageId!: string | null;
-  public createdBy!: string;
-  public participants!: string[];
-  public directKey!: string | null;
-  public admins!: string[];
-  public createdAt!: Date;
-  public updatedAt!: Date;
-  public deletedAt!: Date | null;
+  declare id: string;
+  declare name: string | null;
+  declare type: ChatType;
+  declare avatar: string | null;
+  declare lastMessageId: string | null;
+  declare createdBy: string;
+  declare participants: string[];
+  declare directKey: string | null;
+  declare admins: string[];
+  declare createdAt: Date;
+  declare updatedAt: Date;
+  declare deletedAt: Date | null;
 
-  public lastMessage?: Message;
-  public creator?: User;
-  public messages?: Message[];
-  public users?: User[];
+  declare lastMessage?: Message;
+  declare creator?: User;
+  declare messages?: Message[];
+  declare users?: User[];
 
   public static buildDirectKey(userIdA: string, userIdB: string): string {
     return [userIdA, userIdB].sort().join(':');

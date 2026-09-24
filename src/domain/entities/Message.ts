@@ -27,20 +27,20 @@ export interface MessageAttributes {
 export interface MessageCreationAttributes extends Optional<MessageAttributes, 'id' | 'mediaUrl' | 'replyToId' | 'readBy' | 'createdAt' | 'updatedAt' | 'deletedAt'> {}
 
 export class Message extends Model<MessageAttributes, MessageCreationAttributes> implements MessageAttributes {
-  public id!: string;
-  public senderId!: string;
-  public chatId!: string;
-  public content!: string;
-  public type!: MessageType;
-  public mediaUrl!: string | null;
-  public replyToId!: string | null;
-  public readBy!: string[];
-  public createdAt!: Date;
-  public updatedAt!: Date;
-  public deletedAt!: Date | null;
+  declare id: string;
+  declare senderId: string;
+  declare chatId: string;
+  declare content: string;
+  declare type: MessageType;
+  declare mediaUrl: string | null;
+  declare replyToId: string | null;
+  declare readBy: string[];
+  declare createdAt: Date;
+  declare updatedAt: Date;
+  declare deletedAt: Date | null;
 
-  public sender?: User;
-  public replyTo?: Message;
+  declare sender?: User;
+  declare replyTo?: Message;
 
   public static initialize(sequelize: Sequelize): void {
     Message.init(
