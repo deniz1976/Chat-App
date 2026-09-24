@@ -10,6 +10,7 @@ import { MessageList } from './MessageList';
 
 interface LineProps {
   onBack(): void;
+  onOpenDetails(chatId: string): void;
   onOpenImage(url: string): void;
   onNewLine(): void;
 }
@@ -28,6 +29,7 @@ Line.displayName = 'Line';
 
 const LineView = ({
   onBack,
+  onOpenDetails,
   onOpenImage,
   onNewLine,
   socketRef,
@@ -99,6 +101,9 @@ const LineView = ({
           <h2>{title}</h2>
           <span className={`presence ${presenceClass}`}>{presence}</span>
         </div>
+        <button type="button" className="key key-ghost line-details" onClick={() => onOpenDetails(chat.id)}>
+          Details
+        </button>
       </header>
       <MessageList
         chat={chat}

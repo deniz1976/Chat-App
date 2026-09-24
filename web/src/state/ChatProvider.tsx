@@ -31,6 +31,13 @@ export interface ChatActions {
   stopTyping(chatId: string): void;
   startDirectChat(userId: string): Promise<string>;
   createGroup(name: string, userIds: string[]): Promise<string>;
+  renameGroup(chatId: string, name: string): Promise<void>;
+  changeGroupPhoto(chatId: string, file: File): Promise<void>;
+  addMember(chatId: string, userId: string): Promise<void>;
+  removeMember(chatId: string, userId: string): Promise<void>;
+  setAdmin(chatId: string, userId: string, admin: boolean): Promise<void>;
+  leaveChat(chatId: string): Promise<void>;
+  deleteChat(chatId: string): Promise<void>;
   updateDisplayName(displayName: string): Promise<void>;
   uploadAvatar(file: File): Promise<void>;
   setStatus(status: UserStatus): Promise<void>;
@@ -379,6 +386,40 @@ export const ChatProvider = ({ me, onSignedOut, children }: ChatProviderProps) =
         return chat.id;
       },
 
+      async renameGroup(chatId, name) {
+        dispatch({ type: 'chatUpserted', chat: await api.updateChat(chatId, { name }) });
+      },
+
+      async changeGroupPhoto(chatId, file) {
+        const { url } = await api.uploadImage(file);
+        dispatch({ type: 'chatUpserted', chat: await api.updateChat(chatId, { avatar: url }) });
+      },
+
+      async addMember(chatId, userId) {
+        await api.addParticipant(chatId, userId);
+        await refreshChat(chatId);
+      },
+
+      async removeMember(chatId, userId) {
+        await api.removeParticipant(chatId, userId);
+        await refreshChat(chatId);
+      },
+
+      async setAdmin(chatId, userId, admin) {
+        await (admin ? api.addAdmin(chatId, userId) : api.removeAdmin(chatId, userId));
+        await refreshChat(chatId);
+      },
+
+      async leaveChat(chatId) {
+        await api.leaveChat(chatId);
+        dispatch({ type: 'chatRemoved', chatId });
+      },
+
+      async deleteChat(chatId) {
+        await api.deleteChat(chatId);
+        dispatch({ type: 'chatRemoved', chatId });
+      },
+
       async updateDisplayName(displayName) {
         const me = stateRef.current.me;
         const user = await api.updateProfile(me.id, { displayName });
@@ -402,7 +443,7 @@ export const ChatProvider = ({ me, onSignedOut, children }: ChatProviderProps) =
         onSignedOut();
       },
     };
-  }, [deliver, loadLatest, onSignedOut, realtime, stopTyping]);
+  }, [deliver, loadLatest, onSignedOut, realtime, refreshChat, stopTyping]);
 
   const value = useMemo(() => ({ state, actions }), [state, actions]);
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

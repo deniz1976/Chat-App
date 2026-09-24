@@ -69,6 +69,16 @@ export const api = {
   createGroupChat: (name: string, participants: string[]) =>
     request<Chat>('POST', '/chats', { type: 'group', name, participants }),
   markChatAsRead: (id: string) => request<{ messageIds: string[] }>('POST', `/chats/${id}/read`),
+  updateChat: (id: string, data: { name?: string; avatar?: string | null }) =>
+    request<Chat>('PUT', `/chats/${id}`, data),
+  deleteChat: (id: string) => request<void>('DELETE', `/chats/${id}`),
+  leaveChat: (id: string) => request<void>('POST', `/chats/${id}/leave`),
+  addParticipant: (id: string, userId: string) =>
+    request<{ participants: string[] }>('POST', `/chats/${id}/participants`, { userId }),
+  removeParticipant: (id: string, userId: string) =>
+    request<{ participants: string[] }>('DELETE', `/chats/${id}/participants/${userId}`),
+  addAdmin: (id: string, userId: string) => request<{ admins: string[] }>('POST', `/chats/${id}/admins`, { userId }),
+  removeAdmin: (id: string, userId: string) => request<{ admins: string[] }>('DELETE', `/chats/${id}/admins/${userId}`),
 
   messages: (chatId: string, before?: string, limit = 50) =>
     request<Message[]>('GET', `/messages/chat/${chatId}?limit=${limit}${before ? `&before=${before}` : ''}`),

@@ -6,10 +6,16 @@ import { Board } from './Board';
 import { Cord } from './Cord';
 import { Lightbox } from './Lightbox';
 import { Line } from './Line';
+import { LineDetailsDialog } from './LineDetailsDialog';
 import { NewLineDialog } from './NewLineDialog';
 import { ProfileDialog } from './ProfileDialog';
 
-type Overlay = { kind: 'new-line' } | { kind: 'profile' } | { kind: 'image'; url: string } | null;
+type Overlay =
+  | { kind: 'new-line' }
+  | { kind: 'profile' }
+  | { kind: 'image'; url: string }
+  | { kind: 'details'; chatId: string }
+  | null;
 
 interface SwitchboardProps {
   theme: ThemePreference;
@@ -37,6 +43,7 @@ export const Switchboard = ({ theme, onThemeChange }: SwitchboardProps) => {
       <Line
         ref={lineSocket}
         onBack={() => actions.selectChat(null)}
+        onOpenDetails={(chatId) => setOverlay({ kind: 'details', chatId })}
         onOpenImage={(url) => setOverlay({ kind: 'image', url })}
         onNewLine={() => setOverlay({ kind: 'new-line' })}
       />
@@ -61,6 +68,9 @@ export const Switchboard = ({ theme, onThemeChange }: SwitchboardProps) => {
       )}
       {overlay?.kind === 'profile' && <ProfileDialog onClose={close} />}
       {overlay?.kind === 'image' && <Lightbox url={overlay.url} onClose={close} />}
+      {overlay?.kind === 'details' && state.chats[overlay.chatId] && (
+        <LineDetailsDialog chat={state.chats[overlay.chatId]!} onClose={close} />
+      )}
     </div>
   );
 };

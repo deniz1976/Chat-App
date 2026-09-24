@@ -1242,6 +1242,82 @@ img {
   justify-self: end;
 }
 
+.line-details {
+  margin-left: auto;
+  padding: 10px 14px;
+  flex: none;
+}
+
+.details-title {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  min-width: 0;
+}
+
+.details-title b {
+  font: 800 26px/1 var(--font-display);
+  text-transform: uppercase;
+}
+
+.inline-form {
+  display: flex;
+  gap: 8px;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.text-button {
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  font: 600 11px/1.2 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  color: var(--ink);
+}
+
+.text-button.danger {
+  color: var(--danger);
+}
+
+.member {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.member .person-name {
+  flex: 1;
+  min-width: 120px;
+}
+
+.member-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  padding-left: 52px;
+}
+
+.confirm {
+  display: grid;
+  gap: 12px;
+  border: 2px solid var(--danger);
+  padding: 12px;
+}
+
+.confirm p {
+  margin: 0;
+}
+
 /* ---------- small screens ---------- */
 
 @media (max-width: 760px) {
@@ -1285,6 +1361,10 @@ img {
 
   .line-title h2 {
     font-size: 24px;
+  }
+
+  .line-details {
+    padding: 10px;
   }
 
   .messages,

@@ -1,50 +1,24 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { api, ApiError } from '../api/client';
+import { useState, type FormEvent } from 'react';
+import { ApiError } from '../api/client';
 import type { User } from '../api/types';
 import { presenceText } from '../lib/format';
+import { useUserSearch } from '../lib/useUserSearch';
 import { useChat } from '../state/ChatProvider';
 import { Avatar } from './Avatar';
 import { Dialog, DialogHeader } from './Dialog';
 
 type Mode = 'direct' | 'group';
 
-const SEARCH_DELAY_MS = 250;
-
 export const NewLineDialog = ({ onClose, onOpened }: { onClose(): void; onOpened(chatId: string): void }) => {
   const { state, actions } = useChat();
   const [mode, setMode] = useState<Mode>('direct');
   const [query, setQuery] = useState('');
-  const [found, setFound] = useState<{ term: string; users: User[] }>({ term: '', users: [] });
   const [selected, setSelected] = useState<User[]>([]);
   const [groupName, setGroupName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const term = query.trim();
-  const searching = term !== '' && found.term !== term;
-  const results = found.term === term ? found.users : [];
-
-  useEffect(() => {
-    if (!term) {
-      return;
-    }
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      api
-        .searchUsers(term)
-        .then((users) => users.filter((user) => user.id !== state.me.id))
-        .catch(() => [])
-        .then((users) => {
-          if (!cancelled) {
-            setFound({ term, users });
-          }
-        });
-    }, SEARCH_DELAY_MS);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [term, state.me.id]);
+  const { term, results, searching } = useUserSearch(query, [state.me.id]);
 
   const run = async (task: () => Promise<string>) => {
     setBusy(true);
