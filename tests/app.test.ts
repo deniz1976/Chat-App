@@ -27,6 +27,8 @@ describe('application', () => {
     const response = await request(app).get('/').expect(200);
     expect(response.headers['content-security-policy']).toContain("script-src 'self'");
     expect(response.headers['content-security-policy']).toContain("script-src-attr 'none'");
+    expect(response.headers['content-security-policy']).toContain("img-src 'self' data: blob:");
+    expect(response.headers['content-security-policy']).toContain("media-src 'self' blob:");
   });
 
   it('serves the API documentation', async () => {

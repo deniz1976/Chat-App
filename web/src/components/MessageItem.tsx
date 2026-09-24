@@ -31,10 +31,19 @@ const deliveryText = (message: ThreadMessage, chat: Chat): string => {
   return chat.type === 'group' ? `Read by ${readers}` : 'Read';
 };
 
+const MEDIA_LABELS: Record<ThreadMessage['type'], string> = {
+  text: 'Message',
+  image: 'Photo',
+  audio: 'Audio',
+  video: 'Video',
+  file: 'File',
+};
+
 export const captionOf = (message: Pick<ThreadMessage, 'type' | 'content'>): string =>
   message.type === 'image' && IMAGE_FILE_NAME.test(message.content) ? '' : message.content;
 
-const replyPreview = (reply: ReplySummary): string => captionOf(reply) || 'Photo';
+export const summaryOf = (message: Pick<ReplySummary, 'type' | 'content'>): string =>
+  message.type === 'text' ? message.content : `${MEDIA_LABELS[message.type]}: ${captionOf(message) || message.content}`;
 
 export const MessageItem = ({
   message,
@@ -90,7 +99,7 @@ export const MessageItem = ({
             {message.replyTo ? (
               <>
                 <span className="label">{replySender?.displayName ?? 'Unknown'}</span>
-                <span className="msg-quote-text">{replyPreview(message.replyTo)}</span>
+                <span className="msg-quote-text">{summaryOf(message.replyTo)}</span>
               </>
             ) : (
               <span className="label">Original message was deleted</span>
@@ -103,7 +112,21 @@ export const MessageItem = ({
             <img src={message.mediaUrl} alt={caption || 'Shared image'} loading="lazy" />
           </button>
         )}
-        {caption && <p className="msg-card">{caption}</p>}
+        {message.type === 'audio' && message.mediaUrl && (
+          <audio className="msg-media" controls preload="none" src={message.mediaUrl} />
+        )}
+        {message.type === 'video' && message.mediaUrl && (
+          <video className="msg-media msg-video" controls preload="metadata" src={message.mediaUrl} />
+        )}
+        {message.type === 'file' && message.mediaUrl ? (
+          <a className="msg-file" href={message.mediaUrl} target="_blank" rel="noopener noreferrer">
+            <span className="plate">File</span>
+            <span className="msg-file-name">{message.content}</span>
+            <span className="label">Download</span>
+          </a>
+        ) : (
+          caption && <p className="msg-card">{caption}</p>
+        )}
 
         <span className={`msg-meta${message.localStatus === 'failed' ? ' failed' : ''}`}>
           <time dateTime={message.createdAt}>{formatTime(message.createdAt)}</time>

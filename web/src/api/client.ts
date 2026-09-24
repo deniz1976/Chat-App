@@ -87,4 +87,6 @@ export const api = {
   deleteMessage: (id: string) => request<void>('DELETE', `/messages/${id}`),
 
   uploadImage: (file: File) => request<UploadedFile>('POST', '/upload/image', fileForm(file)),
+  uploadAudio: (file: File) => request<UploadedFile>('POST', '/upload/audio', fileForm(file)),
+  uploadFile: (file: File) => request<UploadedFile>('POST', '/upload/file', fileForm(file)),
 };

@@ -822,6 +822,58 @@ img {
   border: 2px solid var(--ink);
 }
 
+.msg-media {
+  display: block;
+  max-width: min(360px, 100%);
+}
+
+.msg-video {
+  max-height: 320px;
+  border: 2px solid var(--ink);
+  background: var(--jack);
+}
+
+.msg-file {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  gap: 4px 10px;
+  align-items: center;
+  max-width: min(360px, 100%);
+  padding: 10px 14px;
+  background: var(--panel);
+  border: 2px dashed var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.msg-file .plate {
+  grid-row: span 2;
+}
+
+.msg-file-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.msg-file:hover .label {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.attachment-kind {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  background: var(--jack);
+  color: var(--jack-text);
+  font: 600 10px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .msg-meta {
   display: flex;
   gap: 8px;

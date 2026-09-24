@@ -12,6 +12,7 @@ import {
 import { api, ApiError } from '../api/client';
 import type { Chat, Message, Profile, UserStatus } from '../api/types';
 import { RealtimeClient, type RealtimeEvent } from '../realtime/RealtimeClient';
+import { attachmentKind, messageTypeFor } from '../lib/attachments';
 import { initialState, reducer, TYPING_TTL_MS, type State, type ThreadMessage } from './store';
 
 const PAGE_SIZE = 50;
@@ -22,7 +23,7 @@ export interface ChatActions {
   selectChat(chatId: string | null): void;
   loadOlder(chatId: string): Promise<void>;
   sendText(chatId: string, content: string, replyTo?: ThreadMessage): void;
-  sendImage(chatId: string, file: File, caption: string, replyTo?: ThreadMessage): void;
+  sendAttachment(chatId: string, file: File, caption: string, replyTo?: ThreadMessage): void;
   editMessage(message: ThreadMessage, content: string): Promise<void>;
   deleteMessage(message: ThreadMessage): Promise<void>;
   retry(message: ThreadMessage): void;
@@ -230,7 +231,9 @@ export const ChatProvider = ({ me, onSignedOut, children }: ChatProviderProps) =
     const run = async () => {
       let mediaUrl = message.mediaUrl ?? undefined;
       if (mediaFile) {
-        mediaUrl = (await api.uploadImage(mediaFile)).url;
+        const upload =
+          message.type === 'image' ? api.uploadImage : message.type === 'audio' ? api.uploadAudio : api.uploadFile;
+        mediaUrl = (await upload(mediaFile)).url;
       }
       const sent: Message = await api.sendMessage({
         chatId: message.chatId,
@@ -324,9 +327,10 @@ export const ChatProvider = ({ me, onSignedOut, children }: ChatProviderProps) =
         deliver(message);
       },
 
-      sendImage(chatId, file, caption, replyTo) {
+      sendAttachment(chatId, file, caption, replyTo) {
         stopTyping(chatId);
-        const message = draft(chatId, caption || file.name, 'image', URL.createObjectURL(file), replyTo);
+        const kind = attachmentKind(file.type) ?? 'file';
+        const message = draft(chatId, caption || file.name, messageTypeFor(kind), URL.createObjectURL(file), replyTo);
         pendingFiles.current.set(message.id, file);
         dispatch({ type: 'messageSending', message });
         deliver({ ...message, mediaUrl: null }, file);

@@ -3,6 +3,7 @@ import type { Chat, User } from '../api/types';
 import { cordFor } from '../lib/cords';
 import { chatTitle, formatListTime, otherMember } from '../lib/format';
 import { Avatar } from './Avatar';
+import { summaryOf } from './MessageItem';
 
 interface JackRowProps {
   chat: Chat;
@@ -18,7 +19,7 @@ const previewText = (chat: Chat, meId: string, users: Record<string, User>): str
   if (!message) {
     return chat.type === 'group' ? `${chat.members.length} members` : 'No messages yet';
   }
-  const body = message.type === 'image' ? 'Photo' : message.content;
+  const body = summaryOf(message);
   if (message.senderId === meId) {
     return `You: ${body}`;
   }

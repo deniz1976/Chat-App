@@ -8,6 +8,7 @@ import { setupApiRoutes } from './api/routes';
 
 export const createApp = (): Express => {
   const app = express();
+  const storageOrigins = config.cloudflare.r2PublicBaseUrl ? [config.cloudflare.r2PublicBaseUrl] : [];
   app.set('trust proxy', config.trustProxy);
 
   if (config.corsOrigins.length > 0) {
@@ -17,11 +18,8 @@ export const createApp = (): Express => {
     helmet({
       contentSecurityPolicy: {
         directives: {
-          imgSrc: [
-            "'self'",
-            'data:',
-            ...(config.cloudflare.r2PublicBaseUrl ? [config.cloudflare.r2PublicBaseUrl] : []),
-          ],
+          imgSrc: ["'self'", 'data:', 'blob:', ...storageOrigins],
+          mediaSrc: ["'self'", 'blob:', ...storageOrigins],
         },
       },
     }),

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { ACCEPTED_TYPES, attachmentKind, validateAttachment } from '../lib/attachments';
 import { formatBytes } from '../lib/format';
 import { useChat } from '../state/ChatProvider';
 import type { ThreadMessage } from '../state/store';
-import { captionOf } from './MessageItem';
+import { summaryOf } from './MessageItem';
 
 const EMOJIS = [
   '😀',
@@ -38,8 +39,6 @@ const EMOJIS = [
   '📞',
   '🎧',
 ];
-const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
-const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 export type ComposerMode =
   { kind: 'new' } | { kind: 'reply'; message: ThreadMessage } | { kind: 'edit'; message: ThreadMessage };
@@ -52,7 +51,7 @@ interface ComposerProps {
 
 interface Attachment {
   file: File;
-  preview: string;
+  preview: string | null;
 }
 
 export const Composer = ({ chatId, mode, onModeDone }: ComposerProps) => {
@@ -68,7 +67,7 @@ export const Composer = ({ chatId, mode, onModeDone }: ComposerProps) => {
 
   useEffect(
     () => () => {
-      if (attachment) {
+      if (attachment?.preview) {
         URL.revokeObjectURL(attachment.preview);
       }
     },
@@ -100,7 +99,7 @@ export const Composer = ({ chatId, mode, onModeDone }: ComposerProps) => {
       return;
     }
     if (attachment) {
-      actions.sendImage(chatId, attachment.file, text.trim(), replyTo);
+      actions.sendAttachment(chatId, attachment.file, text.trim(), replyTo);
       setAttachment(null);
     } else {
       actions.sendText(chatId, text.trim(), replyTo);
@@ -128,15 +127,12 @@ export const Composer = ({ chatId, mode, onModeDone }: ComposerProps) => {
     if (!file) {
       return;
     }
-    if (!IMAGE_TYPES.includes(file.type)) {
-      setError('Only JPEG, PNG, GIF and WebP images can be sent.');
+    const problem = validateAttachment(file);
+    if (problem) {
+      setError(problem);
       return;
     }
-    if (file.size > MAX_IMAGE_BYTES) {
-      setError('Images must be 15 MB or smaller.');
-      return;
-    }
-    setAttachment({ file, preview: URL.createObjectURL(file) });
+    setAttachment({ file, preview: attachmentKind(file.type) === 'image' ? URL.createObjectURL(file) : null });
   };
 
   const insertEmoji = (emoji: string) => {
@@ -165,7 +161,7 @@ export const Composer = ({ chatId, mode, onModeDone }: ComposerProps) => {
         <div className="composer-mode">
           <span className="composer-mode-text">
             <span className="label">{mode.kind === 'edit' ? 'Editing your message' : `Replying to ${modeSender}`}</span>
-            <span>{captionOf(modeTarget) || 'Photo'}</span>
+            <span>{summaryOf(modeTarget)}</span>
           </span>
           <button type="button" className="tool" onClick={onModeDone} aria-label="Cancel">
             ✕
@@ -174,12 +170,16 @@ export const Composer = ({ chatId, mode, onModeDone }: ComposerProps) => {
       )}
       {attachment && (
         <div className="attachment">
-          <img src={attachment.preview} alt="" />
+          {attachment.preview ? (
+            <img src={attachment.preview} alt="" />
+          ) : (
+            <span className="attachment-kind">{attachmentKind(attachment.file.type)}</span>
+          )}
           <span className="attachment-name">
             <span>{attachment.file.name}</span>
             <span className="label">{formatBytes(attachment.file.size)} · add a caption below</span>
           </span>
-          <button type="button" className="tool" onClick={() => setAttachment(null)} aria-label="Remove image">
+          <button type="button" className="tool" onClick={() => setAttachment(null)} aria-label="Remove attachment">
             ✕
           </button>
         </div>
@@ -194,7 +194,7 @@ export const Composer = ({ chatId, mode, onModeDone }: ComposerProps) => {
           type="button"
           className="tool"
           onClick={() => fileInput.current?.click()}
-          aria-label="Attach an image"
+          aria-label="Attach a file"
           disabled={!!editing}
         >
           +
@@ -203,7 +203,7 @@ export const Composer = ({ chatId, mode, onModeDone }: ComposerProps) => {
           ref={fileInput}
           id="composer-file"
           type="file"
-          accept={IMAGE_TYPES.join(',')}
+          accept={ACCEPTED_TYPES}
           hidden
           onChange={(event) => {
             pickFile(event.target.files?.[0]);
