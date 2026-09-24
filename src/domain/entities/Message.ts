@@ -107,12 +107,6 @@ export class Message extends Model<MessageAttributes, MessageCreationAttributes>
         tableName: 'messages',
         sequelize,
         paranoid: true,
-        indexes: [
-          {
-            name: 'messages_chat_id_created_at',
-            fields: ['chat_id', 'created_at'],
-          },
-        ],
       }
     );
   }

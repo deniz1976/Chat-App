@@ -7,7 +7,11 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "dev": "nodemon --watch src --ext ts --exec ts-node src/server.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "migrate": "node dist/infrastructure/database/migrate.js up",
+    "migrate:undo": "node dist/infrastructure/database/migrate.js down",
+    "migrate:status": "node dist/infrastructure/database/migrate.js status",
+    "migrate:dev": "ts-node src/infrastructure/database/migrate.ts up"
   },
   "repository": {
     "type": "git",
@@ -46,6 +50,7 @@
     "sequelize": "^6.37.7",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
+    "umzug": "^3.8.3",
     "winston": "^3.17.0",
     "ws": "^8.18.1"
   },

@@ -1,6 +1,7 @@
 import { Sequelize } from 'sequelize';
 import { config, Config } from '../../config';
 import { logger } from '../../utils/logger';
+import { createMigrator } from './migrator';
 
 import { User } from '../../domain/entities/User';
 import { Chat } from '../../domain/entities/Chat';
@@ -47,20 +48,19 @@ const defineAssociations = () => {
   logger.info('Model associations defined.');
 };
 
+const initializeDatabase = (): void => {
+  initializeModels(sequelize);
+  defineAssociations();
+};
+
 export const setupDatabase = async (): Promise<void> => {
-  try {
-    initializeModels(sequelize);
+  initializeDatabase();
 
-    defineAssociations();
+  await sequelize.authenticate();
+  logger.info('Database connection has been established successfully.');
 
-    await sequelize.authenticate();
-    logger.info('Database connection has been established successfully.');
-
-    await sequelize.sync({ alter: true });
-    logger.info('Database models synchronized.');
-
-  } catch (error) {
-    logger.error('Unable to setup database:', { error });
-    throw error;
+  const pending = await createMigrator(sequelize).pending();
+  if (pending.length > 0) {
+    throw new Error(`Database has pending migrations: ${pending.map(m => m.name).join(', ')}. Run "npm run migrate" first.`);
   }
-}; 
+};

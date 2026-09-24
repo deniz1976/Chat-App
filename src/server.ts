@@ -3,13 +3,15 @@ import http from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
-import { config } from './config';
+import { assertServerConfig, config } from './config';
 import { setupDatabase } from './infrastructure/database';
 import { errorHandler, notFoundHandler } from './api/middlewares/errorHandler';
 import { logger } from './utils/logger';
 import { initializeWebSocket } from './api/websocket/server';
 import { presenceService } from './container';
 import { setupApiRoutes } from './api/routes';
+
+assertServerConfig();
 
 const app = express();
 app.set('trust proxy', config.trustProxy);

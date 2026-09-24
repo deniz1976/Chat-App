@@ -112,14 +112,6 @@ export class Chat extends Model<ChatAttributes, ChatCreationAttributes> implemen
         tableName: 'chats',
         sequelize,
         paranoid: true,
-        indexes: [
-          {
-            name: 'chats_direct_key_unique',
-            unique: true,
-            fields: ['direct_key'],
-            where: { deleted_at: null },
-          },
-        ],
       }
     );
   }

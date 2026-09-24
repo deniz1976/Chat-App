@@ -55,7 +55,7 @@ export interface Config {
     ssl: boolean;
   };
   jwt: {
-    secret: string;
+    readonly secret: string;
     expiresIn: string;
   };
   cloudflare: {
@@ -82,7 +82,9 @@ export const config: Config = {
     ssl: process.env.DB_SSL === 'true',
   },
   jwt: {
-    secret: loadJwtSecret(),
+    get secret(): string {
+      return loadJwtSecret();
+    },
     expiresIn: process.env.JWT_EXPIRES_IN || '1d',
   },
   cloudflare: {
@@ -92,4 +94,8 @@ export const config: Config = {
     r2AccessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || '',
     r2SecretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || '',
   },
-}; 
+};
+
+export const assertServerConfig = (): void => {
+  loadJwtSecret();
+};

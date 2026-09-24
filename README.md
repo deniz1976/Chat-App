@@ -137,8 +137,9 @@ public/                   # Static frontend files (HTML, CSS, JavaScript).
 
 5.  **Run database migrations:**
     ```bash
-    npm run migration:run
+    npm run migrate:dev
     ```
+    The server refuses to start while migrations are pending. See [Database Migrations](#database-migrations).
 
 ### Running the Application
 
@@ -213,6 +214,19 @@ The following message types are handled by the server (sent from client or broad
 *   `CHAT_CREATED`: Potentially broadcasted when a new chat is created (verify specific implementation).
 *   `ERROR`: Sent by the server to a specific client if an error occurs processing their message (e.g., invalid format).
     *   Payload: `{ message: string }`
+
+## Database Migrations
+
+The schema is managed with migrations in `src/infrastructure/database/migrations`, run by [Umzug](https://github.com/sequelize/umzug) and recorded in the `sequelize_meta` table. The application never alters the schema on startup.
+
+| Command | Description |
+| --- | --- |
+| `npm run migrate:dev` | Apply pending migrations from the TypeScript sources |
+| `npm run migrate` | Apply pending migrations from the compiled `dist` build |
+| `npm run migrate:undo` | Revert the last applied migration |
+| `npm run migrate:status` | List executed and pending migrations |
+
+Databases created by earlier versions through `sequelize.sync` are upgraded in place: the baseline migration is skipped when the tables already exist, duplicate unique constraints accumulated by `sync({ alter: true })` are dropped, and duplicate direct chats are merged into the oldest one before the uniqueness index is created.
 
 ## Configuration
 
