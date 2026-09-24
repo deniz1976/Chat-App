@@ -1,67 +1,43 @@
-import express from 'express';
 import http from 'http';
-import cors from 'cors';
-import helmet from 'helmet';
-import path from 'path';
 import { assertServerConfig, config } from './config';
-import { setupDatabase } from './infrastructure/database';
-import { errorHandler, notFoundHandler } from './api/middlewares/errorHandler';
-import { logger } from './utils/logger';
+import { createApp } from './app';
+import { sequelize, setupDatabase } from './infrastructure/database';
 import { initializeWebSocket } from './api/websocket/server';
 import { presenceService } from './container';
-import { setupApiRoutes } from './api/routes';
+import { logger } from './utils/logger';
 
-assertServerConfig();
+const SHUTDOWN_TIMEOUT_MS = 10000;
 
-const app = express();
-app.set('trust proxy', config.trustProxy);
-let server: http.Server;
+const start = async (): Promise<void> => {
+  assertServerConfig();
+  await setupDatabase();
+  await presenceService.resetAll();
 
-setupDatabase()
-  .then(() => presenceService.resetAll())
-  .then(() => {
-    logger.info('Database setup complete.');
+  const server = http.createServer(createApp());
+  const wss = initializeWebSocket(server);
 
-    if (config.corsOrigins.length > 0) {
-      app.use(cors({ origin: config.corsOrigins, credentials: true }));
-    }
-    app.use(helmet({
-      contentSecurityPolicy: {
-        directives: {
-          imgSrc: ["'self'", 'data:', ...(config.cloudflare.r2PublicBaseUrl ? [config.cloudflare.r2PublicBaseUrl] : [])],
-        },
-      },
-    }));
-    app.use(express.json());
-    app.use(express.urlencoded({ extended: true }));
+  const shutdown = (signal: string): void => {
+    logger.info(`${signal} received, shutting down gracefully`);
+    setTimeout(() => process.exit(1), SHUTDOWN_TIMEOUT_MS).unref();
 
-    app.use(express.static(path.join(__dirname, '..', 'public')));
-
-    setupApiRoutes(app);
-
-    app.use(notFoundHandler);
-    app.use(errorHandler);
-
-    server = http.createServer(app);
-
-    initializeWebSocket(server);
-
-    server.listen(config.port, () => {
-      logger.info(`Server running on port ${config.port} in ${config.nodeEnv} mode`);
-    });
-
-  })
-  .catch((error) => {
-    logger.error('Failed to start server:', { error });
-    process.exit(1);
-  });
-
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
-  if (server) {
-    server.close(() => {
+    wss.clients.forEach(client => client.close(1001, 'Server shutting down'));
+    wss.close();
+    server.close(async () => {
+      await sequelize.close();
       logger.info('Server closed');
       process.exit(0);
     });
-  }
-}); 
+  };
+
+  process.once('SIGTERM', () => shutdown('SIGTERM'));
+  process.once('SIGINT', () => shutdown('SIGINT'));
+
+  server.listen(config.port, () => {
+    logger.info(`Server running on port ${config.port} in ${config.nodeEnv} mode`);
+  });
+};
+
+start().catch((error) => {
+  logger.error('Failed to start server', { error });
+  process.exit(1);
+});
