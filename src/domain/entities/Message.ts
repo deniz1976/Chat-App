@@ -1,6 +1,5 @@
 import { Model, DataTypes, Optional, Sequelize } from 'sequelize';
 import { User } from './User';
-import { Chat } from './Chat';
 
 export enum MessageType {
   TEXT = 'text',
@@ -24,7 +23,7 @@ export interface MessageAttributes {
   deletedAt?: Date | null;
 }
 
-export interface MessageCreationAttributes extends Optional<MessageAttributes, 'id' | 'mediaUrl' | 'replyToId' | 'readBy' | 'createdAt' | 'updatedAt' | 'deletedAt'> {}
+export type MessageCreationAttributes = Optional<MessageAttributes, 'id' | 'mediaUrl' | 'replyToId' | 'readBy' | 'createdAt' | 'updatedAt' | 'deletedAt'>;
 
 export class Message extends Model<MessageAttributes, MessageCreationAttributes> implements MessageAttributes {
   declare id: string;

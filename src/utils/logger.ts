@@ -36,10 +36,13 @@ const serializeErrors = winston.format((info) => {
   return info;
 });
 
+const FORMATTED_KEYS = new Set(['level', 'message', 'timestamp']);
+
 const formatMetadata = (info: winston.Logform.TransformableInfo): string => {
-  const { level, message, timestamp, ...metadata } = info;
-  const keys = Object.keys(metadata);
-  return keys.length > 0 ? ` ${JSON.stringify(metadata)}` : '';
+  const metadata = Object.fromEntries(
+    Object.entries(info).filter(([key]) => !FORMATTED_KEYS.has(key)),
+  );
+  return Object.keys(metadata).length > 0 ? ` ${JSON.stringify(metadata)}` : '';
 };
 
 const formatConsole = winston.format.combine(

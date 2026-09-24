@@ -1,17 +1,13 @@
 const loginContainer = document.getElementById('login-container');
 const loginForm = document.getElementById('login-form');
-const emailInput = document.getElementById('email');
-const passwordInput = document.getElementById('password');
 const loginStatus = document.getElementById('login-status');
 
 const chatContainer = document.getElementById('chat-container');
 const sidebar = document.getElementById('sidebar');
-const userInfoDiv = document.getElementById('user-info');
 const currentUsernameSpan = document.getElementById('current-username');
 const chatListUl = document.getElementById('chat-list');
 const disconnectButton = document.getElementById('disconnect-ws');
 
-const mainContent = document.getElementById('main-content');
 const chatHeader = document.getElementById('chat-header');
 const messagesDiv = document.getElementById('messages');
 const messageForm = document.getElementById('message-form');
@@ -344,7 +340,7 @@ function connectWebSocket() {
         }
         
         fetchChats().then(() => {
-            for (const [userId, status] of userStatuses.entries()) {
+            for (const userId of userStatuses.keys()) {
                 if (userCache[userId]) {
                     updateUserStatusIndicator(userId);
                 }
@@ -1436,7 +1432,7 @@ async function uploadAvatar(file) {
         
         try {
             data = JSON.parse(textData);
-        } catch (parseError) {
+        } catch {
             console.error('Server response is not valid JSON:', textData.substring(0, 100));
             throw new Error('Could not process server response. API endpoint might not exist or is not working.');
         }

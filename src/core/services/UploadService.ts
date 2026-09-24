@@ -68,8 +68,13 @@ export const UPLOAD_POLICIES: Record<UploadKind, UploadPolicy> = {
   },
 };
 
+const isPrintable = (character: string): boolean => {
+  const code = character.charCodeAt(0);
+  return code >= 0x20 && code !== 0x7f && character !== '"';
+};
+
 const sanitizeFilename = (filename: string): string =>
-  filename.replace(/[\\/]/g, '_').replace(/[\u0000-\u001f\u007f"]/g, '').trim().slice(0, 200) || 'file';
+  [...filename.replace(/[\\/]/g, '_')].filter(isPrintable).join('').trim().slice(0, 200) || 'file';
 
 export class UploadService {
   constructor(private readonly storage: FileStorage) {}

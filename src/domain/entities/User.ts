@@ -1,7 +1,5 @@
 import { Model, DataTypes, Optional, Sequelize } from 'sequelize';
 import bcrypt from 'bcrypt';
-import { Chat } from './Chat';
-import { Message } from './Message';
 
 export type UserStatus = 'online' | 'offline' | 'away';
 
@@ -25,7 +23,7 @@ export interface UserAttributes {
   deletedAt?: Date | null;
 }
 
-export interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'status' | 'role' | 'lastSeen' | 'profileImage' | 'createdAt' | 'updatedAt' | 'deletedAt'> {}
+export type UserCreationAttributes = Optional<UserAttributes, 'id' | 'status' | 'role' | 'lastSeen' | 'profileImage' | 'createdAt' | 'updatedAt' | 'deletedAt'>;
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   declare id: string;

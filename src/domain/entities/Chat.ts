@@ -22,7 +22,7 @@ export interface ChatAttributes {
   deletedAt?: Date | null;
 }
 
-export interface ChatCreationAttributes extends Optional<ChatAttributes, 'id' | 'name' | 'avatar' | 'lastMessageId' | 'admins' | 'directKey' | 'createdAt' | 'updatedAt' | 'deletedAt'> {}
+export type ChatCreationAttributes = Optional<ChatAttributes, 'id' | 'name' | 'avatar' | 'lastMessageId' | 'admins' | 'directKey' | 'createdAt' | 'updatedAt' | 'deletedAt'>;
 
 export class Chat extends Model<ChatAttributes, ChatCreationAttributes> implements ChatAttributes {
   declare id: string;

@@ -15,11 +15,11 @@ export const createMigrator = (sequelize: Sequelize) =>
     migrations: {
       glob: ['migrations/*.{ts,js}', { cwd: __dirname, ignore: '**/*.d.ts' }],
       resolve: ({ name, path: migrationPath, context }) => {
-        const migration = require(migrationPath!) as { up: Migration; down: Migration };
+        const load = (): Promise<{ up: Migration; down: Migration }> => import(migrationPath!);
         return {
           name: path.basename(name, path.extname(name)),
-          up: () => migration.up(context),
-          down: () => migration.down(context),
+          up: async () => (await load()).up(context),
+          down: async () => (await load()).down(context),
         };
       },
     },
