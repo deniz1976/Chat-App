@@ -19,15 +19,40 @@ const logColors = {
 
 winston.addColors(logColors);
 
+const serializeError = (error: Error): Record<string, unknown> => ({
+  ...error,
+  name: error.name,
+  message: error.message,
+  stack: error.stack,
+});
+
+const serializeErrors = winston.format((info) => {
+  for (const key of Object.keys(info)) {
+    const value = info[key];
+    if (value instanceof Error) {
+      info[key] = serializeError(value);
+    }
+  }
+  return info;
+});
+
+const formatMetadata = (info: winston.Logform.TransformableInfo): string => {
+  const { level, message, timestamp, ...metadata } = info;
+  const keys = Object.keys(metadata);
+  return keys.length > 0 ? ` ${JSON.stringify(metadata)}` : '';
+};
+
 const formatConsole = winston.format.combine(
+  serializeErrors(),
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-  winston.format.colorize({ all: true }),
+  winston.format.colorize({ level: true }),
   winston.format.printf(
-    (info) => `${info.timestamp} ${info.level}: ${info.message}`,
+    (info) => `${info.timestamp} ${info.level}: ${info.message}${formatMetadata(info)}`,
   ),
 );
 
 const formatFile = winston.format.combine(
+  serializeErrors(),
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   winston.format.json(),
 );
