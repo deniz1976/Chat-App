@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { presenceService, userService } from '../../container';
-import { config } from '../../config';
 import { BadRequestError } from '../../core/errors';
 import { isAdmin } from '../middlewares/auth';
 import { toPrivateUser, toPublicUser } from '../presenters/userPresenter';
@@ -62,16 +61,6 @@ export const updateRole = async (req: Request, res: Response): Promise<void> => 
 };
 
 export const updateUserProfileAvatar = async (req: Request, res: Response): Promise<void> => {
-    const fileKey = (req.file as Express.MulterS3.File | undefined)?.key;
-    if (!fileKey) {
-        throw new BadRequestError('No file uploaded or file type is invalid.');
-    }
-    if (!config.cloudflare.r2PublicBaseUrl) {
-        throw new Error('CLOUDFLARE_R2_PUBLIC_HOSTNAME is not configured');
-    }
-
-    const user = await userService.updateProfile(req.user!.id, {
-        profileImage: `${config.cloudflare.r2PublicBaseUrl}/${fileKey}`,
-    });
+    const user = await userService.changeAvatar(req.user!.id, req.file!);
     res.status(200).json({ message: 'Avatar updated successfully', user: toPrivateUser(user) });
 };

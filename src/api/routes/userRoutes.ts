@@ -14,7 +14,8 @@ import {
 import { authenticate, requireRole, requireSelfOrAdmin } from '../middlewares/auth';
 import { validateUserRole, validateUserStatus, validateUserUpdate } from '../validators/userValidator';
 import { validatePaginatedQuery } from '../validators/queryValidator';
-import uploadMiddleware from '../middlewares/upload';
+import { singleFileUpload } from '../middlewares/upload';
+import { UploadKind } from '../../core/services/UploadService';
 import { UserRole } from '../../domain/entities/User';
 
 const router = express.Router();
@@ -26,7 +27,7 @@ router.use(authenticate);
 router.get('/', validatePaginatedQuery, getUsers);
 router.get('/search', validatePaginatedQuery, searchUsers);
 router.get('/profile', getUserProfile);
-router.put('/profile/avatar', uploadMiddleware, updateUserProfileAvatar);
+router.put('/profile/avatar', singleFileUpload(UploadKind.AVATAR), updateUserProfileAvatar);
 router.get('/:id', getUser);
 router.put('/:id', requireSelfOrAdmin(), validateUserUpdate, updateUser);
 router.delete('/:id', requireSelfOrAdmin(), deleteUser);

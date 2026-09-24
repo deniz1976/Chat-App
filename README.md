@@ -27,7 +27,7 @@ An advanced real-time chat application built with Node.js, TypeScript, WebSocket
 *   **ORM:** Sequelize (provides an abstraction layer for interacting with the PostgreSQL database).
 *   **Real-time Communication:** WebSockets (`ws` library for raw WebSocket implementation).
 *   **Authentication:** JSON Web Tokens (JWT) (`jsonwebtoken` library).
-*   **File Upload Handling:** Multer (`multer`, `multer-s3`) for processing multipart/form-data requests.
+*   **File Upload Handling:** Multer (`multer`) for processing multipart/form-data requests.
 *   **Media Storage & Delivery:** Cloudflare R2 (Object storage service) integrated via AWS SDK v3 (`@aws-sdk/client-s3`). Configuration includes R2 Bucket Name, Public Hostname, Access Key ID, Secret Access Key.
 *   **Validation:** Joi (for robust request data validation).
 *   **Logging:** Winston (a versatile logging library for Node.js, configured for console and file output).
@@ -166,9 +166,9 @@ Simply open the `public/index.html` file directly in your web browser. The JavaS
 
 *   **Avatar Upload:**
     *   Frontend (`public/script.js`): Sends the image file via a PUT request to `/api/v1/users/profile/avatar`.
-    *   Backend (`src/api/routes/userRoutes.ts`): Defines the route, protected by `authenticate` middleware and uses `uploadMiddleware`.
-    *   Backend (`src/api/middlewares/upload.ts`): Uses `multer` and `multer-s3` with AWS SDK v3 to handle the file upload, validate type/size, and upload directly to the configured Cloudflare R2 bucket.
-    *   Backend (`src/api/controllers/userController.ts` -> `updateUserProfileAvatar`): Gets the uploaded file's key from `req.file`, constructs the public URL using `CLOUDFLARE_R2_PUBLIC_HOSTNAME` and the key, updates the user's `profileImage` field in the database, and returns the updated user data.
+    *   Backend (`src/api/middlewares/upload.ts`): Buffers the file in memory with `multer`, enforcing the allowed MIME types and size limit of the upload kind.
+    *   Backend (`src/core/services/UploadService.ts`): Verifies that images match their declared type by their file signature, stores the file in R2 under a generated key and returns its public URL. Uploads of generic files are stored with `Content-Disposition: attachment`.
+    *   Backend (`src/core/services/UserService.ts` -> `changeAvatar`): Updates the user's `profileImage` with the stored file URL.
 *   **Avatar Display:**
     *   Frontend (`public/script.js`): Uses the `profileImage` URL (fetched from the API) directly in `<img>` tag `src` attributes.
     *   R2 Configuration: Requires the R2 bucket to allow public read access via the configured `CLOUDFLARE_R2_PUBLIC_HOSTNAME`.

@@ -1,6 +1,7 @@
 import { User, UserRole } from '../../domain/entities/User';
 import { UserRepository } from '../../domain/repositories/UserRepository';
 import { BadRequestError, NotFoundError } from '../errors';
+import { IncomingFile, UploadKind, UploadService } from './UploadService';
 
 export interface ProfileUpdate {
   displayName?: string;
@@ -8,7 +9,10 @@ export interface ProfileUpdate {
 }
 
 export class UserService {
-  constructor(private readonly users: UserRepository) {}
+  constructor(
+    private readonly users: UserRepository,
+    private readonly uploads: UploadService,
+  ) {}
 
   list(limit: number, offset: number): Promise<User[]> {
     return this.users.list(limit, offset);
@@ -32,6 +36,11 @@ export class UserService {
       throw new NotFoundError('User not found');
     }
     return user;
+  }
+
+  async changeAvatar(userId: string, file: IncomingFile): Promise<User> {
+    const { url } = await this.uploads.upload(userId, UploadKind.AVATAR, file);
+    return this.updateProfile(userId, { profileImage: url });
   }
 
   async changeRole(requesterId: string, userId: string, role: UserRole): Promise<User> {
