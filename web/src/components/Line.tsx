@@ -110,13 +110,25 @@ const LineView = ({
           <button
             type="button"
             className="key key-ghost"
+            aria-label="Search this chat"
             aria-pressed={searching}
             onClick={() => setSearching(!searching)}
           >
-            Search
+            <span className="line-action-icon" aria-hidden="true">
+              ⌕
+            </span>
+            <span className="line-action-label">Search</span>
           </button>
-          <button type="button" className="key key-ghost" onClick={() => onOpenDetails(chat.id)}>
-            Details
+          <button
+            type="button"
+            className="key key-ghost"
+            aria-label="Chat details"
+            onClick={() => onOpenDetails(chat.id)}
+          >
+            <span className="line-action-icon" aria-hidden="true">
+              ⋮
+            </span>
+            <span className="line-action-label">Details</span>
           </button>
         </div>
       </header>

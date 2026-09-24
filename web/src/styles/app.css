@@ -1323,6 +1323,12 @@ img {
   padding: 10px 14px;
 }
 
+.line-action-icon {
+  display: none;
+  font-size: 18px;
+  line-height: 1;
+}
+
 .line-actions .key[aria-pressed='true'] {
   background: var(--ink);
   color: var(--face);
@@ -1496,7 +1502,19 @@ img {
   }
 
   .line-actions .key {
-    padding: 10px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+  }
+
+  .line-action-icon {
+    display: block;
+  }
+
+  .line-action-label {
+    display: none;
   }
 
   .search-bar {
