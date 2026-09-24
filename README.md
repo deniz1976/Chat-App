@@ -146,21 +146,21 @@ public/                   # Static frontend files (HTML, CSS, JavaScript).
     ```bash
     npm run dev
     ```
-    The backend server will start (typically on `http://localhost:3000`). The frontend is available by opening the `public/index.html` file in your browser (or serving it via a simple HTTP server).
+    The server restarts on changes under `src/` and listens on `http://localhost:3000` by default.
 
 *   **Production Mode:**
-    Build the TypeScript code:
+    Compile the TypeScript sources into `dist/`:
     ```bash
     npm run build
     ```
-    Start the application:
+    Start the compiled application:
     ```bash
     npm start
     ```
 
 ### Accessing the Frontend
 
-Simply open the `public/index.html` file directly in your web browser. The JavaScript code will connect to the backend server running on `localhost:3000` (or the configured port).
+The frontend is served by the backend. Open `http://localhost:3000` (or the configured port) in your browser. Opening `public/index.html` directly from disk does not work because authentication relies on a same-origin cookie.
 
 ## Key Features Implementation
 

@@ -1,5 +1,10 @@
+import fs from 'fs';
+import path from 'path';
 import swaggerJsdoc from 'swagger-jsdoc';
-import { version } from '../../../package.json';
+
+const projectRoot = path.resolve(__dirname, '..', '..', '..');
+const { version } = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
+const sourceRoot = path.resolve(__dirname, '..', '..');
 
 const options: swaggerJsdoc.Options = {
   definition: {
@@ -38,7 +43,7 @@ const options: swaggerJsdoc.Options = {
       },
     ],
   },
-  apis: ['./src/api/routes/*.ts', './src/api/controllers/*.ts', './src/domain/entities/*.ts'],
+  apis: [path.join(sourceRoot, 'api', 'controllers', '*.{ts,js}')],
 };
 
 export const specs = swaggerJsdoc(options); 
