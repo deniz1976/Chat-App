@@ -103,7 +103,7 @@ export class MessageRepositoryImpl implements MessageRepository {
   }
 
   async updateContent(id: string, senderId: string, content: string): Promise<Message | null> {
-    const [updated] = await Message.update({ content }, { where: { id, senderId } });
+    const [updated] = await Message.update({ content, editedAt: new Date() }, { where: { id, senderId } });
     return updated > 0 ? this.findById(id) : null;
   }
 

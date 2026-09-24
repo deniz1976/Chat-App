@@ -18,6 +18,7 @@ export interface MessageAttributes {
   mediaUrl?: string | null;
   replyToId?: string | null;
   readBy: string[];
+  editedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;
@@ -25,7 +26,7 @@ export interface MessageAttributes {
 
 export type MessageCreationAttributes = Optional<
   MessageAttributes,
-  'id' | 'mediaUrl' | 'replyToId' | 'readBy' | 'createdAt' | 'updatedAt' | 'deletedAt'
+  'id' | 'mediaUrl' | 'replyToId' | 'readBy' | 'editedAt' | 'createdAt' | 'updatedAt' | 'deletedAt'
 >;
 
 export class Message extends Model<MessageAttributes, MessageCreationAttributes> implements MessageAttributes {
@@ -37,6 +38,7 @@ export class Message extends Model<MessageAttributes, MessageCreationAttributes>
   declare mediaUrl: string | null;
   declare replyToId: string | null;
   declare readBy: string[];
+  declare editedAt: Date | null;
   declare createdAt: Date;
   declare updatedAt: Date;
   declare deletedAt: Date | null;
@@ -91,6 +93,10 @@ export class Message extends Model<MessageAttributes, MessageCreationAttributes>
         readBy: {
           type: DataTypes.ARRAY(DataTypes.UUID),
           defaultValue: [],
+        },
+        editedAt: {
+          type: DataTypes.DATE,
+          allowNull: true,
         },
         createdAt: {
           type: DataTypes.DATE,

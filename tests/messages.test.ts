@@ -84,7 +84,13 @@ describe('messages', () => {
 
     await bob.put(`/messages/${message.id}`, { content: 'forged' }).expect(404);
     await alice.put(`/messages/${message.id}`, {}).expect(400);
-    expect((await alice.put(`/messages/${message.id}`, { content: 'edited' }).expect(200)).body.content).toBe('edited');
+    expect(message.editedAt).toBeNull();
+    const edited = (await alice.put(`/messages/${message.id}`, { content: 'edited' }).expect(200)).body;
+    expect(edited.content).toBe('edited');
+    expect(edited.editedAt).not.toBeNull();
+
+    await bob.put(`/messages/${message.id}/read`).expect(200);
+    expect((await alice.get(`/messages/${message.id}`)).body.editedAt).toBe(edited.editedAt);
 
     await bob.delete(`/messages/${message.id}`).expect(404);
     await alice.delete(`/messages/${message.id}`).expect(204);
