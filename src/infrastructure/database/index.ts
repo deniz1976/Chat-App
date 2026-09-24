@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { Sequelize } from 'sequelize';
 import { config, Config } from '../../config';
 import { logger } from '../../utils/logger';
@@ -7,7 +8,22 @@ import { User } from '../../domain/entities/User';
 import { Chat } from '../../domain/entities/Chat';
 import { Message } from '../../domain/entities/Message';
 
-const { dialect, host, port, user, password, database, ssl } = config.db as Config['db'];
+const { dialect, host, port, user, password, database } = config.db as Config['db'];
+
+const buildSslOptions = ({ ssl, sslRejectUnauthorized, sslCaPath }: Config['db']) => {
+  if (!ssl) {
+    return false;
+  }
+  if (!sslRejectUnauthorized) {
+    logger.warn('Database TLS certificate verification is disabled');
+  }
+  return {
+    require: true,
+    rejectUnauthorized: sslRejectUnauthorized,
+    ...(sslCaPath && { ca: fs.readFileSync(sslCaPath, 'utf8') }),
+  };
+};
+
 export const sequelize = new Sequelize({
   dialect: dialect,
   host,
@@ -17,7 +33,7 @@ export const sequelize = new Sequelize({
   database,
   logging: (msg) => logger.debug(msg),
   dialectOptions: {
-    ssl: ssl ? { require: true, rejectUnauthorized: false } : false,
+    ssl: buildSslOptions(config.db),
   },
   define: {
     underscored: true,

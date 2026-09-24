@@ -111,6 +111,8 @@ public/                   # Static frontend files (HTML, CSS, JavaScript).
     DB_PASSWORD=your_db_password
     DB_NAME=chat_app
     DB_SSL=false # Set to true if using SSL connection
+    DB_SSL_CA_PATH= # Optional path to the CA certificate (PEM) used to verify the database server
+    DB_SSL_REJECT_UNAUTHORIZED=true # Verify the database TLS certificate. Only set to false for trusted networks
 
     # JWT Authentication
     JWT_SECRET=generate_a_very_strong_random_secret_key # Required, at least 32 characters. The server refuses to start without it.

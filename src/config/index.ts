@@ -60,6 +60,8 @@ export interface Config {
     password: string;
     database: string;
     ssl: boolean;
+    sslRejectUnauthorized: boolean;
+    sslCaPath: string;
   };
   jwt: {
     readonly secret: string;
@@ -88,6 +90,8 @@ export const config: Config = {
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'chat_app',
     ssl: process.env.DB_SSL === 'true',
+    sslRejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
+    sslCaPath: process.env.DB_SSL_CA_PATH || '',
   },
   jwt: {
     get secret(): string {
