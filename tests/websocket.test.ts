@@ -163,6 +163,30 @@ describe('WebSocket', () => {
       await Promise.all([bobSocket.close(), aliceSocket.close()]);
     });
 
+    it('notifies users about chats created, changed and removed', async () => {
+      const bobSocket = await connectAs(server, bob);
+      const carolSocket = await connectAs(server, carol);
+
+      const group = (await alice.post('/chats', { type: 'group', name: 'team', participants: [bob.id] }).expect(201))
+        .body;
+      await bobSocket.waitFor((e) => e.type === 'CHAT_CREATED' && e.payload.chatId === group.id);
+
+      await alice.post(`/chats/${group.id}/participants`, { userId: carol.id }).expect(200);
+      await carolSocket.waitFor((e) => e.type === 'CHAT_CREATED' && e.payload.chatId === group.id);
+      await bobSocket.waitFor((e) => e.type === 'CHAT_UPDATED' && e.payload.chatId === group.id);
+
+      await alice.delete(`/chats/${group.id}/participants/${carol.id}`).expect(200);
+      await carolSocket.waitFor((e) => e.type === 'CHAT_REMOVED' && e.payload.chatId === group.id);
+
+      await alice.delete(`/chats/${group.id}`).expect(204);
+      await bobSocket.waitFor((e) => e.type === 'CHAT_REMOVED' && e.payload.chatId === group.id);
+
+      expect(carolSocket.events.filter((e) => e.type === 'CHAT_UPDATED' && e.payload.chatId === group.id)).toHaveLength(
+        0,
+      );
+      await Promise.all([bobSocket.close(), carolSocket.close()]);
+    });
+
     it('reports malformed and unsupported messages', async () => {
       const socket = await connectAs(server, alice);
       socket.send('not json');

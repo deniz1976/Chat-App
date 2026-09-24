@@ -5,6 +5,7 @@ import { MessageRepository } from '../../domain/repositories/MessageRepository';
 import { UserRepository } from '../../domain/repositories/UserRepository';
 import { DuplicateEntityError } from '../../domain/repositories/errors';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../errors';
+import { RealtimeEventType, RealtimeNotifier } from '../realtime';
 
 export interface CreateChatInput {
   name?: string | null;
@@ -29,6 +30,7 @@ export class ChatService {
     private readonly chats: ChatRepository,
     private readonly users: UserRepository,
     private readonly messages: MessageRepository,
+    private readonly notifier: RealtimeNotifier,
   ) {}
 
   async listForUser(userId: string): Promise<ChatView[]> {
@@ -59,6 +61,9 @@ export class ChatService {
       input.type === ChatType.GROUP
         ? { chat: await this.createGroup(userId, input), created: true }
         : await this.findOrCreateDirect(userId, input);
+    if (created) {
+      this.notify(RealtimeEventType.CHAT_CREATED, chat.id, chat.participants);
+    }
     return { view: await this.getForUser(chat.id, userId), created };
   }
 
@@ -72,6 +77,7 @@ export class ChatService {
       throw new BadRequestError('No update data provided');
     }
     await this.chats.update(chatId, data);
+    this.notify(RealtimeEventType.CHAT_UPDATED, chatId, chat.participants);
     return this.getForUser(chatId, userId);
   }
 
@@ -81,6 +87,7 @@ export class ChatService {
       throw new ForbiddenError('Only the creator can delete this chat');
     }
     await this.chats.delete(chatId);
+    this.notify(RealtimeEventType.CHAT_REMOVED, chatId, chat.participants);
   }
 
   async addParticipant(chatId: string, requesterId: string, userId: string): Promise<string[]> {
@@ -93,6 +100,8 @@ export class ChatService {
     if (!participants) {
       throw new ConflictError('User is already a participant');
     }
+    this.notify(RealtimeEventType.CHAT_CREATED, chatId, [userId]);
+    this.notify(RealtimeEventType.CHAT_UPDATED, chatId, chat.participants);
     return participants;
   }
 
@@ -109,6 +118,8 @@ export class ChatService {
     if (!participants) {
       throw new NotFoundError('User is not a participant in this chat');
     }
+    this.notify(RealtimeEventType.CHAT_REMOVED, chatId, [userId]);
+    this.notify(RealtimeEventType.CHAT_UPDATED, chatId, participants);
     return participants;
   }
 
@@ -123,7 +134,9 @@ export class ChatService {
     if (chat.createdBy === userId) {
       throw new BadRequestError('The chat creator cannot leave the chat. Delete the chat instead.');
     }
-    await this.chats.removeParticipant(chatId, userId);
+    const participants = await this.chats.removeParticipant(chatId, userId);
+    this.notify(RealtimeEventType.CHAT_REMOVED, chatId, [userId]);
+    this.notify(RealtimeEventType.CHAT_UPDATED, chatId, participants ?? []);
   }
 
   async addAdmin(chatId: string, requesterId: string, userId: string): Promise<string[]> {
@@ -136,6 +149,7 @@ export class ChatService {
     if (!admins) {
       throw new ConflictError('User is already an admin');
     }
+    this.notify(RealtimeEventType.CHAT_UPDATED, chatId, chat.participants);
     return admins;
   }
 
@@ -149,6 +163,7 @@ export class ChatService {
     if (!admins) {
       throw new NotFoundError('User is not an admin in this chat');
     }
+    this.notify(RealtimeEventType.CHAT_UPDATED, chatId, chat.participants);
     return admins;
   }
 
@@ -206,6 +221,10 @@ export class ChatService {
       }
       throw error;
     }
+  }
+
+  private notify(type: RealtimeEventType, chatId: string, userIds: string[]): void {
+    this.notifier.sendToUsers(userIds, { type, payload: { chatId } });
   }
 
   private async buildViews(chats: Chat[], userId: string): Promise<ChatView[]> {

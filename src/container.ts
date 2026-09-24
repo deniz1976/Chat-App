@@ -20,6 +20,6 @@ export const connectionRegistry = new ConnectionRegistry();
 export const authService = new AuthService(userRepository);
 export const uploadService = new UploadService(new R2FileStorage(config.cloudflare));
 export const userService = new UserService(userRepository, uploadService);
-export const chatService = new ChatService(chatRepository, userRepository, messageRepository);
+export const chatService = new ChatService(chatRepository, userRepository, messageRepository, connectionRegistry);
 export const messageService = new MessageService(messageRepository, chatRepository, chatService, connectionRegistry);
 export const presenceService = new PresenceService(userRepository, chatRepository, connectionRegistry);
